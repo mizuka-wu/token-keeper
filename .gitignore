@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 
 release/
-dist-electron/
+dist-electron/*
