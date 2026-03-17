@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import * as db from "../src/database/db";
 import * as groupConfig from "../src/config/groupConfig";
 import type { Token } from "../src/types/database";
+import { EncryptionService } from "../src/services/encryption";
 
 export function setupIPC() {
   // ============ Group IPC Handlers ============
@@ -139,5 +140,48 @@ export function setupIPC() {
 
   ipcMain.handle("config:getGroupConfig", () => {
     return groupConfig.getGroupConfig();
+  });
+
+  // ============ Encryption IPC Handlers ============
+
+  ipcMain.handle("encryption:isMasterKeyInitialized", () => {
+    try {
+      EncryptionService.getMasterKey();
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle("encryption:getStatus", () => {
+    return EncryptionService.getStatus();
+  });
+
+  ipcMain.handle("encryption:retryKeychainAuth", async () => {
+    try {
+      await EncryptionService.retryKeychainAuth();
+      return { success: true, message: "Keychain authorization successful" };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Keychain authorization failed",
+      };
+    }
+  });
+
+  ipcMain.handle("encryption:useLocalStorageTemporarily", () => {
+    EncryptionService.useLocalStorageTemporarily();
+    return { success: true, message: "Using local storage temporarily" };
+  });
+
+  ipcMain.handle("encryption:encrypt", (_, plaintext: string) => {
+    return EncryptionService.encrypt(plaintext);
+  });
+
+  ipcMain.handle("encryption:decrypt", (_, ciphertext: string) => {
+    return EncryptionService.decrypt(ciphertext);
   });
 }

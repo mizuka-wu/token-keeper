@@ -16,6 +16,12 @@
     "noEmit": true,
     "jsx": "preserve",
 
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
     /* Linting */
     "strict": false,
     "noUnusedLocals": true,

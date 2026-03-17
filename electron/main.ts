@@ -1,10 +1,12 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { execSync } from "child_process";
 import { initializeDatabase } from "../src/database/db";
 import { closeDatabase } from "../src/database/connection";
 import { initializeGroupConfig } from "../src/config/groupConfig";
 import { setupIPC } from "./ipc";
+import { EncryptionService } from "../src/services/encryption";
 
 app.on("before-quit", async () => {
   await closeDatabase();
@@ -88,7 +90,42 @@ app.on("activate", () => {
   }
 });
 
+ipcMain.on("open-system-settings", () => {
+  try {
+    if (process.platform === "darwin") {
+      execSync(
+        "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Keychain'",
+      );
+    } else if (process.platform === "win32") {
+      execSync("start ms-settings:privacy-credentials");
+    } else {
+      console.log("System settings not supported on this platform");
+    }
+  } catch (error) {
+    console.error("Failed to open system settings:", error);
+  }
+});
+
 app.whenReady().then(async () => {
+  try {
+    await EncryptionService.initializeMasterKey();
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "KEYCHAIN_AUTH_REQUIRED"
+    ) {
+      console.error("Keychain authorization required");
+      await initializeDatabase();
+      initializeGroupConfig();
+      setupIPC();
+      createWindow();
+      return;
+    }
+    throw error;
+  }
+
   await initializeDatabase();
   initializeGroupConfig();
   setupIPC();

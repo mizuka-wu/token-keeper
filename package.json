@@ -3,11 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.18.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
@@ -21,6 +25,7 @@
     "@vitest/ui": "0.34.6",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9",
     "jsdom": "^29.0.0",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",

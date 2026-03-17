@@ -3,6 +3,7 @@ import { Group } from "./entities/Group";
 import { Token } from "./entities/Token";
 import { GroupToken } from "./entities/GroupToken";
 import type { Group as GroupType, Token as TokenType } from "../types/database";
+import { EncryptionService } from "../services/encryption";
 
 export { initializeDatabase };
 
@@ -62,9 +63,10 @@ export async function createToken(
   expired_at?: string,
 ): Promise<TokenType> {
   const tokenRepo = AppDataSource.getRepository(Token);
+  const encryptedValue = EncryptionService.encrypt(value);
   const token = tokenRepo.create({
     name,
-    value,
+    value: encryptedValue,
     env_name: env_name || null,
     description: description || null,
     tags: tags ? JSON.stringify(tags) : null,
@@ -96,7 +98,8 @@ export async function updateToken(
   const updateData: any = {};
 
   if (updates.name !== undefined) updateData.name = updates.name;
-  if (updates.value !== undefined) updateData.value = updates.value;
+  if (updates.value !== undefined)
+    updateData.value = EncryptionService.encrypt(updates.value);
   if (updates.env_name !== undefined) updateData.env_name = updates.env_name;
   if (updates.description !== undefined)
     updateData.description = updates.description;
@@ -249,8 +252,18 @@ export async function getTokenWithGroups(tokenId: number): Promise<any> {
 // ============ Helper Functions ============
 
 function parseToken(token: Token): TokenType {
+  let decryptedValue = token.value;
+  try {
+    decryptedValue = EncryptionService.decrypt(token.value);
+  } catch (error) {
+    console.warn(
+      "Failed to decrypt token value, returning encrypted value:",
+      error,
+    );
+  }
   return {
     ...token,
+    value: decryptedValue,
     tags: token.tags ? JSON.parse(token.tags) : undefined,
   } as any;
 }
