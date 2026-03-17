@@ -14,7 +14,21 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ["better-sqlite3", "@prisma/client"],
+              external: [
+                "better-sqlite3",
+                "mysql",
+                "mysql2",
+                "oracledb",
+                "pg",
+                "pg-native",
+                "pg-query-stream",
+                "redis",
+                "ioredis",
+                "sqlite3",
+                "sql.js",
+                "better-sqlite3",
+                "typeorm",
+              ],
             },
           },
         },

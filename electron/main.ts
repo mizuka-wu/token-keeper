@@ -1,22 +1,13 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import fs from "fs";
-import { initializeDatabase, closePrisma } from "../src/database/prisma";
+import { initializeDatabase } from "../src/database/db";
+import { closeDatabase } from "../src/database/connection";
 import { initializeGroupConfig } from "../src/config/groupConfig";
 import { setupIPC } from "./ipc";
 
-// Set up DATABASE_URL for Prisma before importing database modules
-const userDataPath = app.getPath("userData");
-const dataDir = path.join(userDataPath, "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-const dbPath = path.join(dataDir, "tokens.db");
-process.env.DATABASE_URL = `file:${dbPath}`;
-
 app.on("before-quit", async () => {
-  await closePrisma();
+  await closeDatabase();
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

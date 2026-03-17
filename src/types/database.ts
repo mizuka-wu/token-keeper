@@ -19,6 +19,7 @@ export interface Token {
   order_index: number;
   created_at: string;
   updated_at: string;
+  group_ids?: number[];
 }
 
 export interface GroupToken {

@@ -1,52 +1,53 @@
-import { getPrismaClient } from "./prisma";
-import type { Group, Token } from "../types/database";
+import { AppDataSource, initializeDatabase } from "./connection";
+import { Group } from "./entities/Group";
+import { Token } from "./entities/Token";
+import { GroupToken } from "./entities/GroupToken";
+import type { Group as GroupType, Token as TokenType } from "../types/database";
 
-const prisma = getPrismaClient();
+export { initializeDatabase };
 
 // ============ Group Operations ============
 
 export async function createGroup(
   name: string,
   description?: string,
-): Promise<Group> {
-  return prisma.group.create({
-    data: {
-      name,
-      description: description || null,
-    },
-  }) as any;
+): Promise<GroupType> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  const group = groupRepo.create({
+    name,
+    description: description || null,
+  });
+  return (await groupRepo.save(group)) as any;
 }
 
-export async function getGroups(): Promise<Group[]> {
-  return prisma.group.findMany({
-    orderBy: [{ order_index: "asc" }, { created_at: "desc" }],
-  }) as any;
+export async function getGroups(): Promise<GroupType[]> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  return (await groupRepo.find({
+    order: { order_index: "ASC", created_at: "DESC" },
+  })) as any;
 }
 
-export async function getGroup(id: number): Promise<Group | null> {
-  return prisma.group.findUnique({
-    where: { id },
-  }) as any;
+export async function getGroup(id: number): Promise<GroupType | null> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  return (await groupRepo.findOne({ where: { id } })) as any;
 }
 
 export async function updateGroup(
   id: number,
   name?: string,
   description?: string,
-): Promise<Group> {
-  return prisma.group.update({
-    where: { id },
-    data: {
-      ...(name !== undefined && { name }),
-      ...(description !== undefined && { description }),
-    },
-  }) as any;
+): Promise<GroupType> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  await groupRepo.update(id, {
+    ...(name && { name }),
+    ...(description !== undefined && { description }),
+  });
+  return (await groupRepo.findOneOrFail({ where: { id } })) as any;
 }
 
 export async function deleteGroup(id: number): Promise<void> {
-  await prisma.group.delete({
-    where: { id },
-  });
+  const groupRepo = AppDataSource.getRepository(Group);
+  await groupRepo.delete(id);
 }
 
 // ============ Token Operations ============
@@ -59,44 +60,39 @@ export async function createToken(
   tags?: string[],
   website?: string,
   expired_at?: string,
-): Promise<Token> {
-  return prisma.token
-    .create({
-      data: {
-        name,
-        value,
-        env_name: env_name || null,
-        description: description || null,
-        tags: tags ? JSON.stringify(tags) : null,
-        website: website || null,
-        expired_at: expired_at ? new Date(expired_at) : null,
-      },
-    })
-    .then((t) => parseToken(t as any));
+): Promise<TokenType> {
+  const tokenRepo = AppDataSource.getRepository(Token);
+  const token = tokenRepo.create({
+    name,
+    value,
+    env_name: env_name || null,
+    description: description || null,
+    tags: tags ? JSON.stringify(tags) : null,
+    website: website || null,
+    expired_at: expired_at ? new Date(expired_at) : null,
+  });
+  return (await tokenRepo.save(token)) as any;
 }
 
-export async function getToken(id: number): Promise<Token | null> {
-  const token = await prisma.token.findUnique({
-    where: { id },
-  });
-  return token ? parseToken(token as any) : null;
+export async function getToken(id: number): Promise<TokenType | null> {
+  const tokenRepo = AppDataSource.getRepository(Token);
+  const token = await tokenRepo.findOne({ where: { id } });
+  return token ? (parseToken(token) as any) : null;
 }
 
-export async function getTokens(): Promise<Token[]> {
-  const tokens = await prisma.token.findMany({
-    orderBy: [
-      { expired_at: "asc" },
-      { order_index: "asc" },
-      { created_at: "desc" },
-    ],
+export async function getTokens(): Promise<TokenType[]> {
+  const tokenRepo = AppDataSource.getRepository(Token);
+  const tokens = await tokenRepo.find({
+    order: { expired_at: "ASC", order_index: "ASC", created_at: "DESC" },
   });
-  return (tokens as any[]).map(parseToken);
+  return tokens.map(parseToken) as any[];
 }
 
 export async function updateToken(
   id: number,
-  updates: Partial<Omit<Token, "id" | "created_at" | "updated_at">>,
-): Promise<Token> {
+  updates: Partial<Omit<TokenType, "id" | "created_at" | "updated_at">>,
+): Promise<TokenType> {
+  const tokenRepo = AppDataSource.getRepository(Token);
   const updateData: any = {};
 
   if (updates.name !== undefined) updateData.name = updates.name;
@@ -114,38 +110,30 @@ export async function updateToken(
   if (updates.order_index !== undefined)
     updateData.order_index = updates.order_index;
 
-  const token = await prisma.token.update({
-    where: { id },
-    data: updateData,
-  });
-
-  return parseToken(token as any);
+  await tokenRepo.update(id, updateData);
+  const token = await tokenRepo.findOneOrFail({ where: { id } });
+  return parseToken(token) as any;
 }
 
 export async function deleteToken(id: number): Promise<void> {
-  await prisma.token.delete({
-    where: { id },
-  });
+  const tokenRepo = AppDataSource.getRepository(Token);
+  await tokenRepo.delete(id);
 }
 
-export async function searchTokens(query: string): Promise<Token[]> {
-  const tokens = await prisma.token.findMany({
-    where: {
-      OR: [
-        { name: { contains: query } },
-        { description: { contains: query } },
-        { website: { contains: query } },
-        { env_name: { contains: query } },
-      ],
-    },
-    orderBy: [
-      { expired_at: "asc" },
-      { order_index: "asc" },
-      { created_at: "desc" },
-    ],
-  });
+export async function searchTokens(query: string): Promise<TokenType[]> {
+  const tokenRepo = AppDataSource.getRepository(Token);
+  const tokens = await tokenRepo
+    .createQueryBuilder("token")
+    .where("token.name LIKE :query", { query: `%${query}%` })
+    .orWhere("token.description LIKE :query", { query: `%${query}%` })
+    .orWhere("token.website LIKE :query", { query: `%${query}%` })
+    .orWhere("token.env_name LIKE :query", { query: `%${query}%` })
+    .orderBy("token.expired_at", "ASC", "NULLS FIRST")
+    .addOrderBy("token.order_index", "ASC")
+    .addOrderBy("token.created_at", "DESC")
+    .getMany();
 
-  return (tokens as any[]).map(parseToken);
+  return tokens.map(parseToken) as any[];
 }
 
 // ============ Order/Drag Operations ============
@@ -153,39 +141,33 @@ export async function searchTokens(query: string): Promise<Token[]> {
 export async function updateGroupOrder(
   id: number,
   orderIndex: number,
-): Promise<Group> {
-  return prisma.group.update({
-    where: { id },
-    data: { order_index: orderIndex },
-  }) as any;
+): Promise<GroupType> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  await groupRepo.update(id, { order_index: orderIndex });
+  return (await groupRepo.findOneOrFail({ where: { id } })) as any;
 }
 
 export async function updateTokenOrder(
   id: number,
   orderIndex: number,
-): Promise<Token> {
-  const token = await prisma.token.update({
-    where: { id },
-    data: { order_index: orderIndex },
-  });
-  return parseToken(token as any);
+): Promise<TokenType> {
+  const tokenRepo = AppDataSource.getRepository(Token);
+  await tokenRepo.update(id, { order_index: orderIndex });
+  const token = await tokenRepo.findOneOrFail({ where: { id } });
+  return parseToken(token) as any;
 }
 
 export async function reorderGroups(groupIds: number[]): Promise<void> {
+  const groupRepo = AppDataSource.getRepository(Group);
   for (let i = 0; i < groupIds.length; i++) {
-    await prisma.group.update({
-      where: { id: groupIds[i] },
-      data: { order_index: i },
-    });
+    await groupRepo.update(groupIds[i], { order_index: i });
   }
 }
 
 export async function reorderTokens(tokenIds: number[]): Promise<void> {
+  const tokenRepo = AppDataSource.getRepository(Token);
   for (let i = 0; i < tokenIds.length; i++) {
-    await prisma.token.update({
-      where: { id: tokenIds[i] },
-      data: { order_index: i },
-    });
+    await tokenRepo.update(tokenIds[i], { order_index: i });
   }
 }
 
@@ -195,22 +177,14 @@ export async function addTokenToGroup(
   groupId: number,
   tokenId: number,
 ): Promise<void> {
-  const existing = await prisma.groupToken.findUnique({
-    where: {
-      group_id_token_id: {
-        group_id: groupId,
-        token_id: tokenId,
-      },
-    },
+  const gtRepo = AppDataSource.getRepository(GroupToken);
+  const existing = await gtRepo.findOne({
+    where: { group_id: groupId, token_id: tokenId },
   });
 
   if (!existing) {
-    await prisma.groupToken.create({
-      data: {
-        group_id: groupId,
-        token_id: tokenId,
-      },
-    });
+    const gt = gtRepo.create({ group_id: groupId, token_id: tokenId });
+    await gtRepo.save(gt);
   }
 }
 
@@ -218,73 +192,65 @@ export async function removeTokenFromGroup(
   groupId: number,
   tokenId: number,
 ): Promise<void> {
-  await prisma.groupToken.deleteMany({
-    where: {
-      group_id: groupId,
-      token_id: tokenId,
-    },
-  });
+  const gtRepo = AppDataSource.getRepository(GroupToken);
+  await gtRepo.delete({ group_id: groupId, token_id: tokenId });
 }
 
-export async function getGroupTokens(groupId: number): Promise<Token[]> {
-  const groupTokens = await prisma.groupToken.findMany({
+export async function getGroupTokens(groupId: number): Promise<TokenType[]> {
+  const gtRepo = AppDataSource.getRepository(GroupToken);
+  const groupTokens = await gtRepo.find({
     where: { group_id: groupId },
-    include: { token: true },
+    relations: ["token"],
   });
 
-  return groupTokens.map((gt) => parseToken(gt.token as any));
+  return groupTokens.map((gt) => parseToken(gt.token)) as any[];
 }
 
-export async function getTokenGroups(tokenId: number): Promise<Group[]> {
-  const tokenGroups = await prisma.groupToken.findMany({
+export async function getTokenGroups(tokenId: number): Promise<GroupType[]> {
+  const gtRepo = AppDataSource.getRepository(GroupToken);
+  const tokenGroups = await gtRepo.find({
     where: { token_id: tokenId },
-    include: { group: true },
+    relations: ["group"],
   });
 
-  return tokenGroups.map((tg) => tg.group as any);
+  return tokenGroups.map((tg) => tg.group) as any[];
 }
 
 export async function getGroupWithTokens(groupId: number): Promise<any> {
-  const group = await prisma.group.findUnique({
+  const groupRepo = AppDataSource.getRepository(Group);
+  const group = await groupRepo.findOne({
     where: { id: groupId },
-    include: {
-      groupTokens: {
-        include: { token: true },
-      },
-    },
+    relations: ["groupTokens", "groupTokens.token"],
   });
 
   if (!group) return null;
 
   return {
     ...group,
-    tokens: group.groupTokens.map((gt) => parseToken(gt.token as any)),
+    tokens: group.groupTokens.map((gt) => parseToken(gt.token)),
   };
 }
 
 export async function getTokenWithGroups(tokenId: number): Promise<any> {
-  const token = await prisma.token.findUnique({
+  const tokenRepo = AppDataSource.getRepository(Token);
+  const token = await tokenRepo.findOne({
     where: { id: tokenId },
-    include: {
-      groupTokens: {
-        include: { group: true },
-      },
-    },
+    relations: ["groupTokens", "groupTokens.group"],
   });
 
   if (!token) return null;
 
   return {
-    ...parseToken(token as any),
+    ...parseToken(token),
     groups: token.groupTokens.map((tg) => tg.group),
   };
 }
 
 // ============ Helper Functions ============
 
-function parseToken(token: any): Token {
+function parseToken(token: Token): TokenType {
   return {
     ...token,
     tags: token.tags ? JSON.parse(token.tags) : undefined,
-  };
+  } as any;
 }
