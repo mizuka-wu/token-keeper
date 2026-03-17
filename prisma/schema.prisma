@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  order_index Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  groupTokens GroupToken[]
+
+  @@map("groups")
+}
+
+model Token {
+  id          Int      @id @default(autoincrement())
+  name        String
+  value       String
+  env_name    String?
+  description String?
+  tags        String?
+  website     String?
+  expired_at  DateTime?
+  order_index Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  groupTokens GroupToken[]
+
+  @@map("tokens")
+}
+
+model GroupToken {
+  id        Int      @id @default(autoincrement())
+  group_id  Int
+  token_id  Int
+  created_at DateTime @default(now())
+
+  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  token Token @relation(fields: [token_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_id, token_id])
+  @@map("group_tokens")
+}

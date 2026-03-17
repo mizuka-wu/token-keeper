@@ -14,25 +14,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: [
-                "better-sqlite3",
-                "@google-cloud/spanner",
-                "mysql",
-                "mysql2",
-                "oracledb",
-                "pg",
-                "pg-native",
-                "pg-query-stream",
-                "redis",
-                "ioredis",
-                "mongodb",
-                "mssql",
-                "sql.js",
-                "sqlite3",
-                "better-sqlite3",
-                "typeorm-aurora-data-api-driver",
-                "cockroachdb",
-              ],
+              external: ["better-sqlite3", "@prisma/client"],
             },
           },
         },

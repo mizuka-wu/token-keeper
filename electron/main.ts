@@ -1,9 +1,13 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { initializeDatabase } from "../src/database/connection";
+import { initializeDatabase, closePrisma } from "../src/database/prisma";
 import { initializeGroupConfig } from "../src/config/groupConfig";
 import { setupIPC } from "./ipc";
+
+app.on("before-quit", async () => {
+  await closePrisma();
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
