@@ -87,6 +87,30 @@ export function setupIPC() {
     return db.getTokenWithGroups(id);
   });
 
+  // ============ Order/Drag IPC Handlers ============
+
+  ipcMain.handle(
+    "order:updateGroupOrder",
+    (_, id: number, orderIndex: number) => {
+      return db.updateGroupOrder(id, orderIndex);
+    },
+  );
+
+  ipcMain.handle(
+    "order:updateTokenOrder",
+    (_, id: number, orderIndex: number) => {
+      return db.updateTokenOrder(id, orderIndex);
+    },
+  );
+
+  ipcMain.handle("order:reorderGroups", (_, groupIds: number[]) => {
+    db.reorderGroups(groupIds);
+  });
+
+  ipcMain.handle("order:reorderTokens", (_, tokenIds: number[]) => {
+    db.reorderTokens(tokenIds);
+  });
+
   // ============ Group-Token Association IPC Handlers ============
 
   ipcMain.handle("groupToken:add", (_, groupId: number, tokenId: number) => {

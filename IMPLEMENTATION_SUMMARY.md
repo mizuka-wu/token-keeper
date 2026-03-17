@@ -42,6 +42,13 @@
 - ✅ `getGroupWithTokens(groupId)` - 获取分组及其 token
 - ✅ `getTokenWithGroups(tokenId)` - 获取 token 及其分组
 
+#### 拖拽排序操作
+
+- ✅ `updateGroupOrder(id, orderIndex)` - 更新单个分组的排序位置
+- ✅ `updateTokenOrder(id, orderIndex)` - 更新单个 token 的排序位置
+- ✅ `reorderGroups(groupIds)` - 批量重新排序分组
+- ✅ `reorderTokens(tokenIds)` - 批量重新排序 token
+
 ### 3. IPC 通信层 (`electron/ipc.ts`)
 
 - ✅ 在 Electron 主进程注册 IPC 事件处理器
@@ -49,6 +56,7 @@
 - ✅ 支持的事件：
   - `group:list`, `group:create`, `group:update`, `group:delete`, `group:get`, `group:withTokens`
   - `token:list`, `token:create`, `token:update`, `token:delete`, `token:get`, `token:search`, `token:withTokens`
+  - `order:updateGroupOrder`, `order:updateTokenOrder`, `order:reorderGroups`, `order:reorderTokens`
   - `groupToken:add`, `groupToken:remove`, `groupToken:getGroupTokens`, `groupToken:getTokenGroups`
 
 ### 4. Vue 3 Composition API 钩子 (`src/composables/useDatabase.ts`)
@@ -76,14 +84,17 @@
 ### Group 特性
 
 - **Active 字段**: 标记分组是否生效（1=活跃，0=不活跃）
+- **Order 字段**: 用于拖拽排序，值越小越靠前
 - **默认分组**: 应用启动时自动创建名为 "Default" 的默认分组
 - 支持启用/禁用分组而无需删除
+- 支持拖拽调整分组顺序
 
 ### Token 排序规则
 
 - 未过期的 token 在上方
 - 已过期的 token 在下方
-- 同类别内按时间排序
+- 同类别内按 order_index 排序（支持拖拽调整）
+- 同优先级内按创建/过期时间排序
 
 ### Token 名称
 
@@ -114,7 +125,15 @@ import { useDatabase } from '@/composables/useDatabase'
 
 export default {
   setup() {
-    const { groups, tokens, createGroup, createToken, getGroupTokens } = useDatabase()
+    const { 
+      groups, 
+      tokens, 
+      createGroup, 
+      createToken, 
+      getGroupTokens,
+      reorderGroups,
+      reorderTokens
+    } = useDatabase()
     
     // 创建分组
     const newGroup = createGroup('AI Services', 'OpenAI, Claude, etc.')
@@ -136,7 +155,17 @@ export default {
     // 获取分组内的 token
     const groupTokens = getGroupTokens(newGroup.id)
     
-    return { groups, tokens }
+    // 拖拽排序分组
+    const handleGroupDragEnd = (groupIds: number[]) => {
+      reorderGroups(groupIds)
+    }
+    
+    // 拖拽排序 token
+    const handleTokenDragEnd = (tokenIds: number[]) => {
+      reorderTokens(tokenIds)
+    }
+    
+    return { groups, tokens, handleGroupDragEnd, handleTokenDragEnd }
   }
 }
 ```

@@ -3,6 +3,7 @@ export interface Group {
   name: string;
   description?: string;
   active: number;
+  order_index: number;
   created_at: string;
   updated_at: string;
 }
@@ -15,7 +16,8 @@ export interface Token {
   description?: string;
   tags?: string[] | string;
   website?: string;
-  expired_at?: string | null;
+  expired_at?: string;
+  order_index: number;
   created_at: string;
   updated_at: string;
 }

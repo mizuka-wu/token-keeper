@@ -31,6 +31,7 @@ export async function initializeDatabase() {
       name TEXT UNIQUE NOT NULL,
       description TEXT,
       active INTEGER DEFAULT 1,
+      order_index INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -58,6 +59,7 @@ export async function initializeDatabase() {
       tags TEXT,
       website TEXT,
       expired_at DATETIME,
+      order_index INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )

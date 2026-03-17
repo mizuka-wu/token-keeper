@@ -279,6 +279,82 @@ export function useDatabase() {
     }
   }
 
+  // ============ Order/Drag Operations ============
+
+  function updateGroupOrder(id: number, orderIndex: number) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const updated = ipcRenderer.invoke(
+        "order:updateGroupOrder",
+        id,
+        orderIndex,
+      );
+      const index = groups.value.findIndex((g) => g.id === id);
+      if (index !== -1) {
+        groups.value[index] = updated;
+      }
+      return updated;
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function updateTokenOrder(id: number, orderIndex: number) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const updated = ipcRenderer.invoke(
+        "order:updateTokenOrder",
+        id,
+        orderIndex,
+      );
+      const index = tokens.value.findIndex((t) => t.id === id);
+      if (index !== -1) {
+        tokens.value[index] = updated;
+      }
+      return updated;
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function reorderGroups(groupIds: number[]) {
+    loading.value = true;
+    error.value = null;
+    try {
+      ipcRenderer.invoke("order:reorderGroups", groupIds);
+      // Re-fetch groups to get updated order_index values
+      listGroups();
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function reorderTokens(tokenIds: number[]) {
+    loading.value = true;
+    error.value = null;
+    try {
+      ipcRenderer.invoke("order:reorderTokens", tokenIds);
+      // Re-fetch tokens to get updated order_index values
+      listTokens();
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     // State
     groups,
@@ -305,5 +381,10 @@ export function useDatabase() {
     removeTokenFromGroup,
     getGroupTokens,
     getTokenGroups,
+    // Order/Drag methods
+    updateGroupOrder,
+    updateTokenOrder,
+    reorderGroups,
+    reorderTokens,
   };
 }

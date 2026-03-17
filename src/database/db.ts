@@ -32,7 +32,9 @@ export function createGroup(
 
 export function getGroups(): Group[] {
   const db = getClient();
-  const stmt = db.prepare("SELECT * FROM groups ORDER BY created_at DESC");
+  const stmt = db.prepare(
+    "SELECT * FROM groups ORDER BY order_index ASC, created_at DESC",
+  );
   return stmt.all() as Group[];
 }
 
@@ -125,6 +127,7 @@ export function getTokens(): Token[] {
     SELECT * FROM tokens 
     ORDER BY 
       CASE WHEN expired_at IS NULL THEN 0 ELSE 1 END,
+      order_index ASC,
       CASE WHEN expired_at IS NULL THEN created_at ELSE expired_at END DESC
   `);
   const results = stmt.all() as any[];
@@ -139,6 +142,7 @@ export function getGroupTokens(groupId: number): Token[] {
     WHERE gt.group_id = ?
     ORDER BY 
       CASE WHEN t.expired_at IS NULL THEN 0 ELSE 1 END,
+      t.order_index ASC,
       CASE WHEN t.expired_at IS NULL THEN t.created_at ELSE t.expired_at END DESC
   `);
   const results = stmt.all([groupId]) as any[];
@@ -206,6 +210,7 @@ export function searchTokens(query: string): Token[] {
     WHERE name LIKE ? OR description LIKE ? OR website LIKE ? OR env_name LIKE ?
     ORDER BY 
       CASE WHEN expired_at IS NULL THEN 0 ELSE 1 END,
+      order_index ASC,
       CASE WHEN expired_at IS NULL THEN created_at ELSE expired_at END DESC
   `);
   const results = stmt.all([
@@ -215,6 +220,46 @@ export function searchTokens(query: string): Token[] {
     searchPattern,
   ]) as any[];
   return results.map(parseToken);
+}
+
+// ============ Order/Drag Operations ============
+
+export function updateGroupOrder(id: number, orderIndex: number): Group {
+  const db = getClient();
+  db.exec(
+    "UPDATE groups SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [orderIndex, id],
+  );
+  return getGroup(id)!;
+}
+
+export function updateTokenOrder(id: number, orderIndex: number): Token {
+  const db = getClient();
+  db.exec(
+    "UPDATE tokens SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [orderIndex, id],
+  );
+  return getToken(id)!;
+}
+
+export function reorderGroups(groupIds: number[]): void {
+  const db = getClient();
+  groupIds.forEach((id, index) => {
+    db.exec(
+      "UPDATE groups SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [index, id],
+    );
+  });
+}
+
+export function reorderTokens(tokenIds: number[]): void {
+  const db = getClient();
+  tokenIds.forEach((id, index) => {
+    db.exec(
+      "UPDATE tokens SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [index, id],
+    );
+  });
 }
 
 // ============ Group-Token Association ============
