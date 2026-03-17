@@ -1,7 +1,8 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { initializeDatabase } from "../src/database/init";
+import { initializeDatabase } from "../src/database/connection";
+import { initializeGroupConfig } from "../src/config/groupConfig";
 import { setupIPC } from "./ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ app.on("activate", () => {
 
 app.whenReady().then(async () => {
   await initializeDatabase();
+  initializeGroupConfig();
   setupIPC();
   createWindow();
 });

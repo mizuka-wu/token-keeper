@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import * as db from "../src/database/db";
+import * as groupConfig from "../src/config/groupConfig";
 import type { Token } from "../src/types/database";
 
 export function setupIPC() {
@@ -9,22 +10,19 @@ export function setupIPC() {
     return db.getGroups();
   });
 
-  ipcMain.handle(
-    "group:create",
-    (_, name: string, description?: string, active?: number) => {
-      return db.createGroup(name, description, active);
-    },
-  );
+  ipcMain.handle("group:create", (_, name: string, description?: string) => {
+    return db.createGroup(name, description);
+  });
 
   ipcMain.handle(
     "group:update",
-    (_, id: number, name?: string, description?: string, active?: number) => {
-      return db.updateGroup(id, name, description, active);
+    (_, id: number, name?: string, description?: string) => {
+      return db.updateGroup(id, name, description);
     },
   );
 
   ipcMain.handle("group:delete", (_, id: number) => {
-    db.deleteGroup(id);
+    return db.deleteGroup(id);
   });
 
   ipcMain.handle("group:get", (_, id: number) => {
@@ -72,7 +70,7 @@ export function setupIPC() {
   });
 
   ipcMain.handle("token:delete", (_, id: number) => {
-    db.deleteToken(id);
+    return db.deleteToken(id);
   });
 
   ipcMain.handle("token:get", (_, id: number) => {
@@ -104,21 +102,21 @@ export function setupIPC() {
   );
 
   ipcMain.handle("order:reorderGroups", (_, groupIds: number[]) => {
-    db.reorderGroups(groupIds);
+    return db.reorderGroups(groupIds);
   });
 
   ipcMain.handle("order:reorderTokens", (_, tokenIds: number[]) => {
-    db.reorderTokens(tokenIds);
+    return db.reorderTokens(tokenIds);
   });
 
   // ============ Group-Token Association IPC Handlers ============
 
   ipcMain.handle("groupToken:add", (_, groupId: number, tokenId: number) => {
-    db.addTokenToGroup(groupId, tokenId);
+    return db.addTokenToGroup(groupId, tokenId);
   });
 
   ipcMain.handle("groupToken:remove", (_, groupId: number, tokenId: number) => {
-    db.removeTokenFromGroup(groupId, tokenId);
+    return db.removeTokenFromGroup(groupId, tokenId);
   });
 
   ipcMain.handle("groupToken:getGroupTokens", (_, groupId: number) => {
@@ -127,5 +125,19 @@ export function setupIPC() {
 
   ipcMain.handle("groupToken:getTokenGroups", (_, tokenId: number) => {
     return db.getTokenGroups(tokenId);
+  });
+
+  // ============ Group Config IPC Handlers ============
+
+  ipcMain.handle("config:getActiveGroupId", () => {
+    return groupConfig.getActiveGroupId();
+  });
+
+  ipcMain.handle("config:setActiveGroupId", (_, groupId: number | null) => {
+    groupConfig.setActiveGroupId(groupId);
+  });
+
+  ipcMain.handle("config:getGroupConfig", () => {
+    return groupConfig.getGroupConfig();
   });
 }

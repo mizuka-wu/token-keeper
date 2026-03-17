@@ -57,6 +57,7 @@
   - `group:list`, `group:create`, `group:update`, `group:delete`, `group:get`, `group:withTokens`
   - `token:list`, `token:create`, `token:update`, `token:delete`, `token:get`, `token:search`, `token:withTokens`
   - `order:updateGroupOrder`, `order:updateTokenOrder`, `order:reorderGroups`, `order:reorderTokens`
+  - `config:getActiveGroupId`, `config:setActiveGroupId`, `config:getGroupConfig`
   - `groupToken:add`, `groupToken:remove`, `groupToken:getGroupTokens`, `groupToken:getTokenGroups`
 
 ### 4. Vue 3 Composition API 钩子 (`src/composables/useDatabase.ts`)
@@ -74,20 +75,28 @@
 - ✅ `TokenWithGroups` 接口
 - ✅ `GroupWithTokens` 接口
 
-### 6. Electron 主进程集成 (`electron/main.ts`)
+### 6. Group Config 管理 (`src/config/groupConfig.ts`)
+
+- ✅ 使用 electron-config 单独管理 active group 状态
+- ✅ 配置文件存储在 `~/Library/Application Support/token-keeper/group-config.json`
+- ✅ 支持获取/设置当前活跃分组
+- ✅ 自动持久化到文件系统
+
+### 7. Electron 主进程集成 (`electron/main.ts`)
 
 - ✅ 在应用启动时初始化数据库
+- ✅ 在应用启动时初始化 Group Config
 - ✅ 设置 IPC 事件处理器
 
 ## 数据特性
 
 ### Group 特性
 
-- **Active 字段**: 标记分组是否生效（1=活跃，0=不活跃）
 - **Order 字段**: 用于拖拽排序，值越小越靠前
 - **默认分组**: 应用启动时自动创建名为 "Default" 的默认分组
-- 支持启用/禁用分组而无需删除
+- **Active 状态**: 通过 electron-config 单独管理（group-config.json）
 - 支持拖拽调整分组顺序
+- 支持设置/获取当前活跃分组
 
 ### Token 排序规则
 

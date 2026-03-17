@@ -1,89 +1,72 @@
-import type {
-  Group,
-  Token,
-  TokenWithGroups,
-  GroupWithTokens,
-} from "../types/database";
-import { getDatabase } from "./init";
-
-function getClient() {
-  return getDatabase();
-}
+import { getDatabase } from "./connection";
+import { Group } from "./entities/Group";
+import { Token } from "./entities/Token";
+import { GroupToken } from "./entities/GroupToken";
+import type { Group as GroupType, Token as TokenType } from "../types/database";
 
 // ============ Group Operations ============
 
-export function createGroup(
+export async function createGroup(
   name: string,
   description?: string,
-  active: number = 1,
-): Group {
-  const db = getClient();
-  db.exec("INSERT INTO groups (name, description, active) VALUES (?, ?, ?)", [
+): Promise<GroupType> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  const group = groupRepo.create({
     name,
-    description || null,
-    active,
-  ]);
+    description: description || null,
+  });
 
-  const result = db.prepare("SELECT last_insert_rowid() as id").get() as any;
-  const lastId = result.id as number;
-
-  return getGroup(lastId)!;
+  return groupRepo.save(group) as any;
 }
 
-export function getGroups(): Group[] {
-  const db = getClient();
-  const stmt = db.prepare(
-    "SELECT * FROM groups ORDER BY order_index ASC, created_at DESC",
-  );
-  return stmt.all() as Group[];
+export async function getGroups(): Promise<GroupType[]> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  return groupRepo.find({
+    order: {
+      order_index: "ASC",
+      created_at: "DESC",
+    },
+  }) as any;
 }
 
-export function getGroup(id: number): Group | null {
-  const db = getClient();
-  const stmt = db.prepare("SELECT * FROM groups WHERE id = ?");
-  const result = stmt.get([id]) as Group | undefined;
-  return result || null;
+export async function getGroup(id: number): Promise<GroupType | null> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  return groupRepo.findOne({ where: { id } }) as any;
 }
 
-export function updateGroup(
+export async function updateGroup(
   id: number,
   name?: string,
   description?: string,
-  active?: number,
-): Group {
-  const db = getClient();
-  const updates: string[] = [];
-  const args: any[] = [];
+): Promise<GroupType> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
 
-  if (name !== undefined) {
-    updates.push("name = ?");
-    args.push(name);
-  }
-  if (description !== undefined) {
-    updates.push("description = ?");
-    args.push(description);
-  }
-  if (active !== undefined) {
-    updates.push("active = ?");
-    args.push(active);
-  }
+  const updates: any = {};
+  if (name !== undefined) updates.name = name;
+  if (description !== undefined) updates.description = description;
 
-  updates.push("updated_at = CURRENT_TIMESTAMP");
-  args.push(id);
+  await groupRepo.update(id, updates);
 
-  db.exec(`UPDATE groups SET ${updates.join(", ")} WHERE id = ?`, args);
-
-  return getGroup(id)!;
+  return (await getGroup(id))!;
 }
 
-export function deleteGroup(id: number): void {
-  const db = getClient();
-  db.exec("DELETE FROM groups WHERE id = ?", [id]);
+export async function deleteGroup(id: number): Promise<void> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  await groupRepo.delete(id);
 }
 
 // ============ Token Operations ============
 
-export function createToken(
+export async function createToken(
   name: string,
   value: string,
   env_name?: string,
@@ -91,227 +74,241 @@ export function createToken(
   tags?: string[],
   website?: string,
   expired_at?: string,
-): Token {
-  const db = getClient();
-  const tagsJson = tags ? JSON.stringify(tags) : null;
+): Promise<TokenType> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
 
-  db.exec(
-    "INSERT INTO tokens (name, value, env_name, description, tags, website, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [
-      name,
-      value,
-      env_name || null,
-      description || null,
-      tagsJson,
-      website || null,
-      expired_at || null,
-    ],
-  );
+  const token = tokenRepo.create({
+    name,
+    value,
+    env_name: env_name || null,
+    description: description || null,
+    tags: tags ? JSON.stringify(tags) : null,
+    website: website || null,
+    expired_at: expired_at ? new Date(expired_at) : null,
+  });
 
-  const result = db.prepare("SELECT last_insert_rowid() as id").get() as any;
-  const lastId = result.id as number;
-
-  return getToken(lastId)!;
+  return tokenRepo.save(token) as any;
 }
 
-export function getToken(id: number): Token | null {
-  const db = getClient();
-  const stmt = db.prepare("SELECT * FROM tokens WHERE id = ?");
-  const result = stmt.get([id]) as any;
-  return result ? parseToken(result) : null;
+export async function getToken(id: number): Promise<TokenType | null> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  const token = await tokenRepo.findOne({ where: { id } });
+  return token ? parseToken(token as any) : null;
 }
 
-export function getTokens(): Token[] {
-  const db = getClient();
-  const stmt = db.prepare(`
-    SELECT * FROM tokens 
-    ORDER BY 
-      CASE WHEN expired_at IS NULL THEN 0 ELSE 1 END,
-      order_index ASC,
-      CASE WHEN expired_at IS NULL THEN created_at ELSE expired_at END DESC
-  `);
-  const results = stmt.all() as any[];
-  return results.map(parseToken);
+export async function getTokens(): Promise<TokenType[]> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  const tokens = await tokenRepo.find({
+    order: {
+      expired_at: "ASC",
+      order_index: "ASC",
+      created_at: "DESC",
+    },
+  });
+
+  return (tokens as any[]).map(parseToken);
 }
 
-export function getGroupTokens(groupId: number): Token[] {
-  const db = getClient();
-  const stmt = db.prepare(`
-    SELECT t.* FROM tokens t
-    INNER JOIN group_tokens gt ON t.id = gt.token_id
-    WHERE gt.group_id = ?
-    ORDER BY 
-      CASE WHEN t.expired_at IS NULL THEN 0 ELSE 1 END,
-      t.order_index ASC,
-      CASE WHEN t.expired_at IS NULL THEN t.created_at ELSE t.expired_at END DESC
-  `);
-  const results = stmt.all([groupId]) as any[];
-  return results.map(parseToken);
-}
-
-export function updateToken(
+export async function updateToken(
   id: number,
-  updates: Partial<Omit<Token, "id" | "created_at" | "updated_at">>,
-): Token {
-  const db = getClient();
-  const updateFields: string[] = [];
-  const args: any[] = [];
+  updates: Partial<Omit<TokenType, "id" | "created_at" | "updated_at">>,
+): Promise<TokenType> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
 
-  if (updates.name !== undefined) {
-    updateFields.push("name = ?");
-    args.push(updates.name);
-  }
-  if (updates.value !== undefined) {
-    updateFields.push("value = ?");
-    args.push(updates.value);
-  }
-  if (updates.env_name !== undefined) {
-    updateFields.push("env_name = ?");
-    args.push(updates.env_name);
-  }
-  if (updates.description !== undefined) {
-    updateFields.push("description = ?");
-    args.push(updates.description);
-  }
-  if (updates.tags !== undefined) {
-    const tagsJson = Array.isArray(updates.tags)
-      ? JSON.stringify(updates.tags)
-      : updates.tags;
-    updateFields.push("tags = ?");
-    args.push(tagsJson);
-  }
-  if (updates.website !== undefined) {
-    updateFields.push("website = ?");
-    args.push(updates.website);
-  }
-  if (updates.expired_at !== undefined) {
-    updateFields.push("expired_at = ?");
-    args.push(updates.expired_at);
-  }
+  const updateData: any = {};
 
-  updateFields.push("updated_at = CURRENT_TIMESTAMP");
-  args.push(id);
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.value !== undefined) updateData.value = updates.value;
+  if (updates.env_name !== undefined) updateData.env_name = updates.env_name;
+  if (updates.description !== undefined)
+    updateData.description = updates.description;
+  if (updates.tags !== undefined)
+    updateData.tags = JSON.stringify(updates.tags);
+  if (updates.website !== undefined) updateData.website = updates.website;
+  if (updates.expired_at !== undefined)
+    updateData.expired_at = updates.expired_at
+      ? new Date(updates.expired_at)
+      : null;
+  if (updates.order_index !== undefined)
+    updateData.order_index = updates.order_index;
 
-  db.exec(`UPDATE tokens SET ${updateFields.join(", ")} WHERE id = ?`, args);
+  await tokenRepo.update(id, updateData);
 
-  return getToken(id)!;
+  return (await getToken(id))!;
 }
 
-export function deleteToken(id: number): void {
-  const db = getClient();
-  db.exec("DELETE FROM tokens WHERE id = ?", [id]);
+export async function deleteToken(id: number): Promise<void> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  await tokenRepo.delete(id);
 }
 
-export function searchTokens(query: string): Token[] {
-  const db = getClient();
+export async function searchTokens(query: string): Promise<TokenType[]> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
   const searchPattern = `%${query}%`;
-  const stmt = db.prepare(`
-    SELECT * FROM tokens 
-    WHERE name LIKE ? OR description LIKE ? OR website LIKE ? OR env_name LIKE ?
-    ORDER BY 
-      CASE WHEN expired_at IS NULL THEN 0 ELSE 1 END,
-      order_index ASC,
-      CASE WHEN expired_at IS NULL THEN created_at ELSE expired_at END DESC
-  `);
-  const results = stmt.all([
-    searchPattern,
-    searchPattern,
-    searchPattern,
-    searchPattern,
-  ]) as any[];
-  return results.map(parseToken);
+  const tokens = await tokenRepo
+    .createQueryBuilder("token")
+    .where("token.name LIKE :query", { query: searchPattern })
+    .orWhere("token.description LIKE :query", { query: searchPattern })
+    .orWhere("token.website LIKE :query", { query: searchPattern })
+    .orWhere("token.env_name LIKE :query", { query: searchPattern })
+    .orderBy("CASE WHEN token.expired_at IS NULL THEN 0 ELSE 1 END", "ASC")
+    .addOrderBy("token.order_index", "ASC")
+    .addOrderBy("token.created_at", "DESC")
+    .getMany();
+
+  return (tokens as any[]).map(parseToken);
 }
 
 // ============ Order/Drag Operations ============
 
-export function updateGroupOrder(id: number, orderIndex: number): Group {
-  const db = getClient();
-  db.exec(
-    "UPDATE groups SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    [orderIndex, id],
-  );
-  return getGroup(id)!;
+export async function updateGroupOrder(
+  id: number,
+  orderIndex: number,
+): Promise<GroupType> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  await groupRepo.update(id, { order_index: orderIndex });
+
+  return (await getGroup(id))!;
 }
 
-export function updateTokenOrder(id: number, orderIndex: number): Token {
-  const db = getClient();
-  db.exec(
-    "UPDATE tokens SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    [orderIndex, id],
-  );
-  return getToken(id)!;
+export async function updateTokenOrder(
+  id: number,
+  orderIndex: number,
+): Promise<TokenType> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  await tokenRepo.update(id, { order_index: orderIndex });
+
+  return (await getToken(id))!;
 }
 
-export function reorderGroups(groupIds: number[]): void {
-  const db = getClient();
-  groupIds.forEach((id, index) => {
-    db.exec(
-      "UPDATE groups SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [index, id],
-    );
-  });
+export async function reorderGroups(groupIds: number[]): Promise<void> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  for (let i = 0; i < groupIds.length; i++) {
+    await groupRepo.update(groupIds[i], { order_index: i });
+  }
 }
 
-export function reorderTokens(tokenIds: number[]): void {
-  const db = getClient();
-  tokenIds.forEach((id, index) => {
-    db.exec(
-      "UPDATE tokens SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [index, id],
-    );
-  });
+export async function reorderTokens(tokenIds: number[]): Promise<void> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  for (let i = 0; i < tokenIds.length; i++) {
+    await tokenRepo.update(tokenIds[i], { order_index: i });
+  }
 }
 
 // ============ Group-Token Association ============
 
-export function addTokenToGroup(groupId: number, tokenId: number): void {
-  const db = getClient();
-  db.exec(
-    "INSERT OR IGNORE INTO group_tokens (group_id, token_id) VALUES (?, ?)",
-    [groupId, tokenId],
-  );
+export async function addTokenToGroup(
+  groupId: number,
+  tokenId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const gtRepo = db.getRepository(GroupToken);
+
+  const existing = await gtRepo.findOne({
+    where: { group_id: groupId, token_id: tokenId },
+  });
+
+  if (!existing) {
+    const gt = gtRepo.create({ group_id: groupId, token_id: tokenId });
+    await gtRepo.save(gt);
+  }
 }
 
-export function removeTokenFromGroup(groupId: number, tokenId: number): void {
-  const db = getClient();
-  db.exec("DELETE FROM group_tokens WHERE group_id = ? AND token_id = ?", [
-    groupId,
-    tokenId,
-  ]);
+export async function removeTokenFromGroup(
+  groupId: number,
+  tokenId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const gtRepo = db.getRepository(GroupToken);
+
+  await gtRepo.delete({ group_id: groupId, token_id: tokenId });
 }
 
-export function getTokenGroups(tokenId: number): Group[] {
-  const db = getClient();
-  const stmt = db.prepare(`
-    SELECT g.* FROM groups g
-    INNER JOIN group_tokens gt ON g.id = gt.group_id
-    WHERE gt.token_id = ?
-    ORDER BY g.created_at DESC
-  `);
-  return stmt.all([tokenId]) as Group[];
+export async function getGroupTokens(groupId: number): Promise<TokenType[]> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  const tokens = await tokenRepo
+    .createQueryBuilder("token")
+    .innerJoin("group_tokens", "gt", "token.id = gt.token_id")
+    .where("gt.group_id = :groupId", { groupId })
+    .orderBy("CASE WHEN token.expired_at IS NULL THEN 0 ELSE 1 END", "ASC")
+    .addOrderBy("token.order_index", "ASC")
+    .addOrderBy("token.created_at", "DESC")
+    .getMany();
+
+  return (tokens as any[]).map(parseToken);
 }
 
-export function getGroupWithTokens(groupId: number): GroupWithTokens | null {
-  const group = getGroup(groupId);
+export async function getTokenGroups(tokenId: number): Promise<GroupType[]> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  return groupRepo
+    .createQueryBuilder("group")
+    .innerJoin("group_tokens", "gt", "group.id = gt.group_id")
+    .where("gt.token_id = :tokenId", { tokenId })
+    .orderBy("group.created_at", "DESC")
+    .getMany() as any;
+}
+
+export async function getGroupWithTokens(groupId: number): Promise<any> {
+  const db = getDatabase();
+  const groupRepo = db.getRepository(Group);
+
+  const group = await groupRepo.findOne({
+    where: { id: groupId },
+    relations: ["groupTokens", "groupTokens.token"],
+  });
+
   if (!group) return null;
 
-  const tokens = getGroupTokens(groupId);
-  return { ...group, tokens };
+  return {
+    ...group,
+    tokens: (group as any).groupTokens.map((gt: any) => parseToken(gt.token)),
+  };
 }
 
-export function getTokenWithGroups(tokenId: number): TokenWithGroups | null {
-  const token = getToken(tokenId);
+export async function getTokenWithGroups(tokenId: number): Promise<any> {
+  const db = getDatabase();
+  const tokenRepo = db.getRepository(Token);
+
+  const token = await tokenRepo.findOne({
+    where: { id: tokenId },
+    relations: ["groupTokens", "groupTokens.group"],
+  });
+
   if (!token) return null;
 
-  const groups = getTokenGroups(tokenId);
-  return { ...token, groups };
+  return {
+    ...parseToken(token as any),
+    groups: (token as any).groupTokens.map((gt: any) => gt.group),
+  };
 }
 
 // ============ Helper Functions ============
 
-function parseToken(row: any): Token {
+function parseToken(token: any): TokenType {
   return {
-    ...row,
-    tags: row.tags ? JSON.parse(row.tags) : undefined,
+    ...token,
+    tags: token.tags ? JSON.parse(token.tags) : undefined,
   };
 }

@@ -16,11 +16,11 @@ export function useDatabase() {
 
   // ============ Group Operations ============
 
-  function listGroups() {
+  async function listGroups() {
     loading.value = true;
     error.value = null;
     try {
-      groups.value = ipcRenderer.invoke("group:list");
+      groups.value = await ipcRenderer.invoke("group:list");
     } catch (e) {
       error.value = (e as Error).message;
     } finally {
@@ -28,16 +28,11 @@ export function useDatabase() {
     }
   }
 
-  function createGroup(name: string, description?: string, active?: number) {
+  async function createGroup(name: string, description?: string) {
     loading.value = true;
     error.value = null;
     try {
-      const newGroup = ipcRenderer.invoke(
-        "group:create",
-        name,
-        description,
-        active,
-      );
+      const newGroup = await ipcRenderer.invoke("group:create", name, description);
       groups.value.unshift(newGroup);
       return newGroup;
     } catch (e) {
@@ -48,22 +43,11 @@ export function useDatabase() {
     }
   }
 
-  function updateGroup(
-    id: number,
-    name?: string,
-    description?: string,
-    active?: number,
-  ) {
+  async function updateGroup(id: number, name?: string, description?: string) {
     loading.value = true;
     error.value = null;
     try {
-      const updated = ipcRenderer.invoke(
-        "group:update",
-        id,
-        name,
-        description,
-        active,
-      );
+      const updated = await ipcRenderer.invoke("group:update", id, name, description);
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
         groups.value[index] = updated;
@@ -77,11 +61,11 @@ export function useDatabase() {
     }
   }
 
-  function deleteGroup(id: number) {
+  async function deleteGroup(id: number) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("group:delete", id);
+      await ipcRenderer.invoke("group:delete", id);
       groups.value = groups.value.filter((g) => g.id !== id);
     } catch (e) {
       error.value = (e as Error).message;
@@ -91,11 +75,11 @@ export function useDatabase() {
     }
   }
 
-  function getGroup(id: number) {
+  async function getGroup(id: number) {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("group:get", id);
+      return await ipcRenderer.invoke("group:get", id);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -104,11 +88,11 @@ export function useDatabase() {
     }
   }
 
-  function getGroupWithTokens(id: number): GroupWithTokens | null {
+  async function getGroupWithTokens(id: number): Promise<GroupWithTokens | null> {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("group:withTokens", id);
+      return await ipcRenderer.invoke("group:withTokens", id);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -119,11 +103,11 @@ export function useDatabase() {
 
   // ============ Token Operations ============
 
-  function listTokens() {
+  async function listTokens() {
     loading.value = true;
     error.value = null;
     try {
-      tokens.value = ipcRenderer.invoke("token:list");
+      tokens.value = await ipcRenderer.invoke("token:list");
     } catch (e) {
       error.value = (e as Error).message;
     } finally {
@@ -131,7 +115,7 @@ export function useDatabase() {
     }
   }
 
-  function createToken(payload: {
+  async function createToken(payload: {
     name: string;
     value: string;
     env_name?: string;
@@ -143,7 +127,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const newToken = ipcRenderer.invoke("token:create", payload);
+      const newToken = await ipcRenderer.invoke("token:create", payload);
       tokens.value.unshift(newToken);
       return newToken;
     } catch (e) {
@@ -154,11 +138,11 @@ export function useDatabase() {
     }
   }
 
-  function updateToken(id: number, updates: Partial<Token>) {
+  async function updateToken(id: number, updates: Partial<Omit<Token, "id" | "created_at" | "updated_at">>) {
     loading.value = true;
     error.value = null;
     try {
-      const updated = ipcRenderer.invoke("token:update", id, updates);
+      const updated = await ipcRenderer.invoke("token:update", id, updates);
       const index = tokens.value.findIndex((t) => t.id === id);
       if (index !== -1) {
         tokens.value[index] = updated;
@@ -172,11 +156,11 @@ export function useDatabase() {
     }
   }
 
-  function deleteToken(id: number) {
+  async function deleteToken(id: number) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("token:delete", id);
+      await ipcRenderer.invoke("token:delete", id);
       tokens.value = tokens.value.filter((t) => t.id !== id);
     } catch (e) {
       error.value = (e as Error).message;
@@ -186,11 +170,11 @@ export function useDatabase() {
     }
   }
 
-  function getToken(id: number) {
+  async function getToken(id: number) {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("token:get", id);
+      return await ipcRenderer.invoke("token:get", id);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -199,11 +183,11 @@ export function useDatabase() {
     }
   }
 
-  function searchTokens(query: string) {
+  async function searchTokens(query: string) {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("token:search", query);
+      return await ipcRenderer.invoke("token:search", query);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -212,11 +196,11 @@ export function useDatabase() {
     }
   }
 
-  function getTokenWithGroups(id: number): TokenWithGroups | null {
+  async function getTokenWithGroups(id: number): Promise<TokenWithGroups | null> {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("token:withGroups", id);
+      return await ipcRenderer.invoke("token:withGroups", id);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -227,11 +211,11 @@ export function useDatabase() {
 
   // ============ Group-Token Association ============
 
-  function addTokenToGroup(groupId: number, tokenId: number) {
+  async function addTokenToGroup(groupId: number, tokenId: number) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("groupToken:add", groupId, tokenId);
+      await ipcRenderer.invoke("groupToken:add", groupId, tokenId);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -240,11 +224,11 @@ export function useDatabase() {
     }
   }
 
-  function removeTokenFromGroup(groupId: number, tokenId: number) {
+  async function removeTokenFromGroup(groupId: number, tokenId: number) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("groupToken:remove", groupId, tokenId);
+      await ipcRenderer.invoke("groupToken:remove", groupId, tokenId);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -253,11 +237,11 @@ export function useDatabase() {
     }
   }
 
-  function getGroupTokens(groupId: number) {
+  async function getGroupTokens(groupId: number) {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("groupToken:getGroupTokens", groupId);
+      return await ipcRenderer.invoke("groupToken:getGroupTokens", groupId);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -266,30 +250,55 @@ export function useDatabase() {
     }
   }
 
-  function getTokenGroups(tokenId: number) {
+  async function getTokenGroups(tokenId: number) {
     loading.value = true;
     error.value = null;
     try {
-      return ipcRenderer.invoke("groupToken:getTokenGroups", tokenId);
+      return await ipcRenderer.invoke("groupToken:getTokenGroups", tokenId);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
     } finally {
       loading.value = false;
+    }
+  }
+
+  // ============ Group Config Operations ============
+
+  async function getActiveGroupId() {
+    try {
+      return await ipcRenderer.invoke("config:getActiveGroupId");
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    }
+  }
+
+  async function setActiveGroupId(groupId: number | null) {
+    try {
+      await ipcRenderer.invoke("config:setActiveGroupId", groupId);
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    }
+  }
+
+  async function getGroupConfig() {
+    try {
+      return await ipcRenderer.invoke("config:getGroupConfig");
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
     }
   }
 
   // ============ Order/Drag Operations ============
 
-  function updateGroupOrder(id: number, orderIndex: number) {
+  async function updateGroupOrder(id: number, orderIndex: number) {
     loading.value = true;
     error.value = null;
     try {
-      const updated = ipcRenderer.invoke(
-        "order:updateGroupOrder",
-        id,
-        orderIndex,
-      );
+      const updated = await ipcRenderer.invoke("order:updateGroupOrder", id, orderIndex);
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
         groups.value[index] = updated;
@@ -303,15 +312,11 @@ export function useDatabase() {
     }
   }
 
-  function updateTokenOrder(id: number, orderIndex: number) {
+  async function updateTokenOrder(id: number, orderIndex: number) {
     loading.value = true;
     error.value = null;
     try {
-      const updated = ipcRenderer.invoke(
-        "order:updateTokenOrder",
-        id,
-        orderIndex,
-      );
+      const updated = await ipcRenderer.invoke("order:updateTokenOrder", id, orderIndex);
       const index = tokens.value.findIndex((t) => t.id === id);
       if (index !== -1) {
         tokens.value[index] = updated;
@@ -325,13 +330,12 @@ export function useDatabase() {
     }
   }
 
-  function reorderGroups(groupIds: number[]) {
+  async function reorderGroups(groupIds: number[]) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("order:reorderGroups", groupIds);
-      // Re-fetch groups to get updated order_index values
-      listGroups();
+      await ipcRenderer.invoke("order:reorderGroups", groupIds);
+      await listGroups();
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -340,13 +344,12 @@ export function useDatabase() {
     }
   }
 
-  function reorderTokens(tokenIds: number[]) {
+  async function reorderTokens(tokenIds: number[]) {
     loading.value = true;
     error.value = null;
     try {
-      ipcRenderer.invoke("order:reorderTokens", tokenIds);
-      // Re-fetch tokens to get updated order_index values
-      listTokens();
+      await ipcRenderer.invoke("order:reorderTokens", tokenIds);
+      await listTokens();
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -381,6 +384,10 @@ export function useDatabase() {
     removeTokenFromGroup,
     getGroupTokens,
     getTokenGroups,
+    // Group Config methods
+    getActiveGroupId,
+    setActiveGroupId,
+    getGroupConfig,
     // Order/Drag methods
     updateGroupOrder,
     updateTokenOrder,

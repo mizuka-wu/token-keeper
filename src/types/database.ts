@@ -2,7 +2,6 @@ export interface Group {
   id: number;
   name: string;
   description?: string;
-  active: number;
   order_index: number;
   created_at: string;
   updated_at: string;

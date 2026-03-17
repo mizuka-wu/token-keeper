@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "libsql": "^0.5.22",
+    "better-sqlite3": "^12.8.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.28",
     "vue": "^3.4.21"
   },
   "devDependencies": {
