@@ -32,7 +32,11 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const newGroup = await ipcRenderer.invoke("group:create", name, description);
+      const newGroup = await ipcRenderer.invoke(
+        "group:create",
+        name,
+        description,
+      );
       groups.value.unshift(newGroup);
       return newGroup;
     } catch (e) {
@@ -47,7 +51,12 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke("group:update", id, name, description);
+      const updated = await ipcRenderer.invoke(
+        "group:update",
+        id,
+        name,
+        description,
+      );
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
         groups.value[index] = updated;
@@ -88,7 +97,9 @@ export function useDatabase() {
     }
   }
 
-  async function getGroupWithTokens(id: number): Promise<GroupWithTokens | null> {
+  async function getGroupWithTokens(
+    id: number,
+  ): Promise<GroupWithTokens | null> {
     loading.value = true;
     error.value = null;
     try {
@@ -138,7 +149,10 @@ export function useDatabase() {
     }
   }
 
-  async function updateToken(id: number, updates: Partial<Omit<Token, "id" | "created_at" | "updated_at">>) {
+  async function updateToken(
+    id: number,
+    updates: Partial<Omit<Token, "id" | "created_at" | "updated_at">>,
+  ) {
     loading.value = true;
     error.value = null;
     try {
@@ -196,7 +210,9 @@ export function useDatabase() {
     }
   }
 
-  async function getTokenWithGroups(id: number): Promise<TokenWithGroups | null> {
+  async function getTokenWithGroups(
+    id: number,
+  ): Promise<TokenWithGroups | null> {
     loading.value = true;
     error.value = null;
     try {
@@ -298,7 +314,11 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke("order:updateGroupOrder", id, orderIndex);
+      const updated = await ipcRenderer.invoke(
+        "order:updateGroupOrder",
+        id,
+        orderIndex,
+      );
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
         groups.value[index] = updated;
@@ -316,7 +336,11 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke("order:updateTokenOrder", id, orderIndex);
+      const updated = await ipcRenderer.invoke(
+        "order:updateTokenOrder",
+        id,
+        orderIndex,
+      );
       const index = tokens.value.findIndex((t) => t.id === id);
       if (index !== -1) {
         tokens.value[index] = updated;

@@ -1,24 +1,11 @@
 import { PrismaClient } from "@prisma/client";
-import path from "path";
-import { app } from "electron";
 
 let prisma: PrismaClient;
-
-function getDatabaseUrl(): string {
-  const userDataPath = app.getPath("userData");
-  const dataDir = path.join(userDataPath, "data");
-  const dbPath = path.join(dataDir, "tokens.db");
-  return `file:${dbPath}`;
-}
 
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: getDatabaseUrl(),
-        },
-      },
+      errorFormat: "pretty",
     });
   }
   return prisma;

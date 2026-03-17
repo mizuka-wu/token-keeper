@@ -134,7 +134,7 @@ export function setupIPC() {
   });
 
   ipcMain.handle("config:setActiveGroupId", (_, groupId: number | null) => {
-    groupConfig.setActiveGroupId(groupId);
+    return groupConfig.setActiveGroupId(groupId);
   });
 
   ipcMain.handle("config:getGroupConfig", () => {
