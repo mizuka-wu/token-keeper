@@ -4,19 +4,22 @@ import { Token } from "./entities/Token";
 import { GroupToken } from "./entities/GroupToken";
 import type { Group as GroupType, Token as TokenType } from "../types/database";
 import { EncryptionService } from "../services/encryption";
+import type {
+  CreateGroup,
+  UpdateGroup,
+  CreateToken,
+  UpdateToken,
+} from "../schemas/index";
 
 export { initializeDatabase };
 
 // ============ Group Operations ============
 
-export async function createGroup(
-  name: string,
-  description?: string,
-): Promise<GroupType> {
+export async function createGroup(payload: CreateGroup): Promise<GroupType> {
   const groupRepo = AppDataSource.getRepository(Group);
   const group = groupRepo.create({
-    name,
-    description: description || null,
+    name: payload.name,
+    description: payload.description || null,
   });
   return (await groupRepo.save(group)) as any;
 }
@@ -35,14 +38,15 @@ export async function getGroup(id: number): Promise<GroupType | null> {
 
 export async function updateGroup(
   id: number,
-  name?: string,
-  description?: string,
+  payload: UpdateGroup,
 ): Promise<GroupType> {
   const groupRepo = AppDataSource.getRepository(Group);
-  await groupRepo.update(id, {
-    ...(name && { name }),
-    ...(description !== undefined && { description }),
-  });
+  const updateData: any = {};
+  if (payload.name !== undefined) updateData.name = payload.name;
+  if (payload.description !== undefined)
+    updateData.description = payload.description;
+
+  await groupRepo.update(id, updateData);
   return (await groupRepo.findOneOrFail({ where: { id } })) as any;
 }
 
@@ -56,25 +60,17 @@ export async function deleteGroup(id: number): Promise<void> {
 
 // ============ Token Operations ============
 
-export async function createToken(
-  name: string,
-  value: string,
-  env_name: string,
-  description?: string,
-  tags?: string[],
-  website?: string,
-  expired_at?: string,
-): Promise<TokenType> {
+export async function createToken(payload: CreateToken): Promise<TokenType> {
   const tokenRepo = AppDataSource.getRepository(Token);
-  const encryptedValue = EncryptionService.encrypt(value);
+  const encryptedValue = EncryptionService.encrypt(payload.value);
   const token = tokenRepo.create({
-    name,
+    name: payload.name,
     value: encryptedValue,
-    env_name,
-    description: description || null,
-    tags: tags ? JSON.stringify(tags) : null,
-    website: website || null,
-    expired_at: expired_at ? new Date(expired_at) : null,
+    env_name: payload.env_name,
+    description: payload.description || null,
+    tags: payload.tags ? JSON.stringify(payload.tags) : null,
+    website: payload.website || null,
+    expired_at: payload.expired_at ? new Date(payload.expired_at) : null,
   });
   const savedToken = await tokenRepo.save(token);
   const parsed = parseToken(savedToken);
@@ -131,26 +127,24 @@ export async function getTokens(): Promise<TokenType[]> {
 
 export async function updateToken(
   id: number,
-  updates: Partial<Omit<TokenType, "id" | "created_at" | "updated_at">>,
+  payload: UpdateToken,
 ): Promise<TokenType> {
   const tokenRepo = AppDataSource.getRepository(Token);
   const updateData: any = {};
 
-  if (updates.name !== undefined) updateData.name = updates.name;
-  if (updates.value !== undefined)
-    updateData.value = EncryptionService.encrypt(updates.value);
-  if (updates.env_name !== undefined) updateData.env_name = updates.env_name;
-  if (updates.description !== undefined)
-    updateData.description = updates.description;
-  if (updates.tags !== undefined)
-    updateData.tags = JSON.stringify(updates.tags);
-  if (updates.website !== undefined) updateData.website = updates.website;
-  if (updates.expired_at !== undefined)
-    updateData.expired_at = updates.expired_at
-      ? new Date(updates.expired_at)
+  if (payload.name !== undefined) updateData.name = payload.name;
+  if (payload.value !== undefined)
+    updateData.value = EncryptionService.encrypt(payload.value);
+  if (payload.env_name !== undefined) updateData.env_name = payload.env_name;
+  if (payload.description !== undefined)
+    updateData.description = payload.description;
+  if (payload.tags !== undefined)
+    updateData.tags = JSON.stringify(payload.tags);
+  if (payload.website !== undefined) updateData.website = payload.website;
+  if (payload.expired_at !== undefined)
+    updateData.expired_at = payload.expired_at
+      ? new Date(payload.expired_at)
       : null;
-  if (updates.order_index !== undefined)
-    updateData.order_index = updates.order_index;
 
   await tokenRepo.update(id, updateData);
   const token = await tokenRepo.findOneOrFail({

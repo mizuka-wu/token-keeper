@@ -3,6 +3,12 @@ import * as db from "../src/database/db";
 import * as groupConfig from "../src/config/groupConfig";
 import type { Token } from "../src/types/database";
 import { EncryptionService } from "../src/services/encryption";
+import {
+  CreateGroupSchema,
+  UpdateGroupSchema,
+  CreateTokenSchema,
+  UpdateTokenSchema,
+} from "../src/schemas/index";
 
 export function setupIPC() {
   // ============ Group IPC Handlers ============
@@ -11,16 +17,15 @@ export function setupIPC() {
     return db.getGroups();
   });
 
-  ipcMain.handle("group:create", (_, name: string, description?: string) => {
-    return db.createGroup(name, description);
+  ipcMain.handle("group:create", (_, payload: any) => {
+    const validated = CreateGroupSchema.parse(payload);
+    return db.createGroup(validated);
   });
 
-  ipcMain.handle(
-    "group:update",
-    (_, id: number, name?: string, description?: string) => {
-      return db.updateGroup(id, name, description);
-    },
-  );
+  ipcMain.handle("group:update", (_, id: number, payload: any) => {
+    const validated = UpdateGroupSchema.parse(payload);
+    return db.updateGroup(id, validated);
+  });
 
   ipcMain.handle("group:delete", (_, id: number) => {
     return db.deleteGroup(id);
@@ -40,34 +45,14 @@ export function setupIPC() {
     return db.getTokens();
   });
 
-  ipcMain.handle(
-    "token:create",
-    (
-      _,
-      payload: {
-        name: string;
-        value: string;
-        env_name?: string;
-        description?: string;
-        tags?: string[];
-        website?: string;
-        expired_at?: string;
-      },
-    ) => {
-      return db.createToken(
-        payload.name,
-        payload.value,
-        payload.env_name,
-        payload.description,
-        payload.tags,
-        payload.website,
-        payload.expired_at,
-      );
-    },
-  );
+  ipcMain.handle("token:create", (_, payload: any) => {
+    const validated = CreateTokenSchema.parse(payload);
+    return db.createToken(validated);
+  });
 
-  ipcMain.handle("token:update", (_, id: number, updates: Partial<Token>) => {
-    return db.updateToken(id, updates);
+  ipcMain.handle("token:update", (_, id: number, payload: any) => {
+    const validated = UpdateTokenSchema.parse(payload);
+    return db.updateToken(id, validated);
   });
 
   ipcMain.handle("token:delete", (_, id: number) => {

@@ -349,40 +349,35 @@ const saveGroup = async () => {
 
 const saveToken = async () => {
   try {
-    if (!tokenForm.value.name.trim() || !tokenForm.value.value.trim() || !tokenForm.value.env_name.trim()) {
-      showToast('Token name, value, and environment are required', 'error')
-      return
-    }
-
     const tags = tokenForm.value.tagsInput
       .split(',')
       .map((t) => t.trim())
       .filter((t) => t)
 
+    const tokenPayload = {
+      name: tokenForm.value.name,
+      value: tokenForm.value.value,
+      env_name: tokenForm.value.env_name,
+      website: tokenForm.value.website || undefined,
+      description: tokenForm.value.description || undefined,
+      tags: tags.length > 0 ? tags : undefined,
+      expired_at: tokenForm.value.expired_at || undefined,
+    }
+
+    // Validate using Zod schema (this will be done on backend, but we can add client-side validation too)
+    if (!tokenPayload.name.trim() || !tokenPayload.value.trim() || !tokenPayload.env_name.trim()) {
+      showToast('Token name, value, and environment are required', 'error')
+      return
+    }
+
     if (editingToken.value) {
-      await window.ipcRenderer.invoke('token:update', editingToken.value.id, {
-        name: tokenForm.value.name,
-        value: tokenForm.value.value,
-        env_name: tokenForm.value.env_name || undefined,
-        website: tokenForm.value.website || undefined,
-        description: tokenForm.value.description || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-        expired_at: tokenForm.value.expired_at || undefined,
-      })
+      await window.ipcRenderer.invoke('token:update', editingToken.value.id, tokenPayload)
       showToast('Token updated successfully', 'success')
     } else {
-      const newToken = await window.ipcRenderer.invoke('token:create', {
-        name: tokenForm.value.name,
-        value: tokenForm.value.value,
-        env_name: tokenForm.value.env_name || undefined,
-        website: tokenForm.value.website || undefined,
-        description: tokenForm.value.description || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-        expired_at: tokenForm.value.expired_at || undefined,
-      })
+      const newToken = await window.ipcRenderer.invoke('token:create', tokenPayload)
 
-      // Associate token with current group if one is selected
-      if (activeGroupId.value && newToken?.id) {
+      // Associate token with current group if one is selected (but not with the virtual "Ungrouped")
+      if (activeGroupId.value && activeGroupId.value !== UNGROUPED_ID && newToken?.id) {
         await window.ipcRenderer.invoke('groupToken:add', activeGroupId.value, newToken.id)
       }
 
