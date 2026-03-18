@@ -19,12 +19,8 @@
           <h2>Groups</h2>
         </div>
         <div class="groups-list">
-          <div
-            v-for="group in groups"
-            :key="group.id"
-            :class="['group-item', { active: activeGroupId === group.id }]"
-            @click="selectGroup(group.id)"
-          >
+          <div v-for="group in groups" :key="group.id" :class="['group-item', { active: activeGroupId === group.id }]"
+            @click="selectGroup(group.id)">
             <div class="group-name">{{ group.name }}</div>
             <div class="group-count">{{ getGroupTokenCount(group.id) }}</div>
           </div>
@@ -35,9 +31,8 @@
       <div class="tokens-main">
         <div v-if="activeGroup" class="group-header">
           <h2>{{ activeGroup.name }}</h2>
-          <p v-if="activeGroup.description" class="group-description">
-            {{ activeGroup.description }}
-          </p>
+          <div v-if="activeGroup.description" class="group-description markdown-content"
+            v-html="renderMarkdown(activeGroup.description)"></div>
         </div>
 
         <div class="tokens-container">
@@ -50,40 +45,34 @@
           </div>
 
           <div v-else class="tokens-grid">
-            <div
-              v-for="token in filteredTokens"
-              :key="token.id"
-              class="token-card"
-              @click="selectToken(token)"
-            >
+            <div v-for="token in filteredTokens" :key="token.id" class="token-card" @click="selectToken(token)">
               <div class="token-header">
                 <h3>{{ token.name }}</h3>
                 <div class="token-actions">
-                  <button
-                    @click.stop="copyToClipboard(token.value)"
-                    class="action-btn"
-                    title="Copy token"
-                  >
+                  <button @click.stop="copyToClipboard(token.value)" class="action-btn" title="Copy token">
                     📋
                   </button>
-                  <button
-                    @click.stop="selectToken(token)"
-                    class="action-btn"
-                    title="Edit token"
-                  >
+                  <button @click.stop="selectToken(token)" class="action-btn" title="Edit token">
                     ✏️
                   </button>
-                  <button
-                    @click.stop="deleteToken(token.id)"
-                    class="action-btn delete"
-                    title="Delete token"
-                  >
+                  <button @click.stop="deleteToken(token.id)" class="action-btn delete" title="Delete token">
                     🗑️
                   </button>
                 </div>
               </div>
 
               <div class="token-body">
+                <div class="token-field token-value-field">
+                  <span class="label">Value:</span>
+                  <div class="token-value-display">
+                    <span v-if="isTokenVisible(token.id)" class="value token-visible">{{ token.value }}</span>
+                    <span v-else class="value token-hidden">••••••••</span>
+                    <button @click.stop="toggleTokenVisibility(token.id)" class="visibility-toggle"
+                      :title="isTokenVisible(token.id) ? 'Hide' : 'Show'">
+                      {{ isTokenVisible(token.id) ? '👁️' : '🙈' }}
+                    </button>
+                  </div>
+                </div>
                 <div v-if="token.env_name" class="token-field">
                   <span class="label">Env:</span>
                   <span class="value">{{ token.env_name }}</span>
@@ -96,7 +85,7 @@
                 </div>
                 <div v-if="token.description" class="token-field">
                   <span class="label">Description:</span>
-                  <span class="value">{{ token.description }}</span>
+                  <div class="value markdown-content" v-html="renderMarkdown(token.description)"></div>
                 </div>
                 <div v-if="token.tags && token.tags.length" class="token-field">
                   <span class="label">Tags:</span>
@@ -132,11 +121,11 @@
             <input v-model="groupForm.name" type="text" placeholder="e.g., Production" />
           </div>
           <div class="form-group">
-            <label>Description (Optional)</label>
-            <textarea
-              v-model="groupForm.description"
-              placeholder="e.g., Production environment tokens"
-            ></textarea>
+            <label>Description (Optional) - Markdown supported</label>
+            <textarea v-model="groupForm.description"
+              placeholder="e.g., Production environment tokens (max 100 characters)" maxlength="100"
+              rows="3"></textarea>
+            <div class="char-count">{{ groupForm.description.length }}/100</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -161,12 +150,16 @@
             <input v-model="tokenForm.name" type="text" placeholder="e.g., API Key" />
           </div>
           <div class="form-group">
-            <label>Token Value</label>
-            <textarea
-              v-model="tokenForm.value"
-              placeholder="Your secret token value"
-              rows="3"
-            ></textarea>
+            <label>Token Value (Max 500 characters)</label>
+            <div class="token-value-wrapper">
+              <textarea v-model="tokenForm.value" :type="showTokenValue ? 'text' : 'password'"
+                placeholder="Your secret token value" maxlength="500" rows="3"></textarea>
+              <button type="button" @click="showTokenValue = !showTokenValue" class="toggle-visibility-btn"
+                :title="showTokenValue ? 'Hide token' : 'Show token'">
+                {{ showTokenValue ? '👁️' : '🙈' }}
+              </button>
+            </div>
+            <div class="char-count">{{ tokenForm.value.length }}/500</div>
           </div>
           <div class="form-group">
             <label>Environment (Optional)</label>
@@ -177,16 +170,14 @@
             <input v-model="tokenForm.website" type="url" placeholder="https://example.com" />
           </div>
           <div class="form-group">
-            <label>Description (Optional)</label>
-            <textarea v-model="tokenForm.description" placeholder="Token description"></textarea>
+            <label>Description (Optional) - Markdown supported</label>
+            <textarea v-model="tokenForm.description" placeholder="Token description (max 100 characters)"
+              maxlength="100" rows="3"></textarea>
+            <div class="char-count">{{ tokenForm.description.length }}/100</div>
           </div>
           <div class="form-group">
             <label>Tags (Optional)</label>
-            <input
-              v-model="tokenForm.tagsInput"
-              type="text"
-              placeholder="Separate tags with commas"
-            />
+            <input v-model="tokenForm.tagsInput" type="text" placeholder="Separate tags with commas" />
           </div>
           <div class="form-group">
             <label>Expiry Date (Optional)</label>
@@ -211,14 +202,28 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { marked } from 'marked'
 import type { Group, Token } from '@/types/database'
+
+// Configure marked for simple rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
+
+const renderMarkdown = (text: string): string => {
+  if (!text) return ''
+  return marked(text) as string
+}
 
 const groups = ref<Group[]>([])
 const tokens = ref<Token[]>([])
 const activeGroupId = ref<number | null>(null)
+const visibleTokenIds = ref<Set<number>>(new Set())
 
 const showAddGroupModal = ref(false)
 const showAddTokenModal = ref(false)
+const showTokenValue = ref(false)
 const editingGroup = ref<Group | null>(null)
 const editingToken = ref<Token | null>(null)
 
@@ -377,6 +382,18 @@ const deleteToken = async (tokenId: number) => {
     showToast('Failed to delete token', 'error')
     console.error(error)
   }
+}
+
+const toggleTokenVisibility = (tokenId: number) => {
+  if (visibleTokenIds.value.has(tokenId)) {
+    visibleTokenIds.value.delete(tokenId)
+  } else {
+    visibleTokenIds.value.add(tokenId)
+  }
+}
+
+const isTokenVisible = (tokenId: number) => {
+  return visibleTokenIds.value.has(tokenId)
 }
 
 const copyToClipboard = async (text: string) => {
@@ -654,6 +671,51 @@ onMounted(() => {
   text-decoration: underline;
 }
 
+/* Token Value Display */
+.token-value-field {
+  position: relative;
+}
+
+.token-value-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.token-visible {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.token-hidden {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #999;
+}
+
+.visibility-toggle {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.visibility-toggle:hover {
+  background-color: #f0f0f0;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
@@ -770,6 +832,35 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* Token Value Input Wrapper */
+.token-value-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.token-value-wrapper textarea {
+  flex: 1;
+}
+
+.toggle-visibility-btn {
+  background: none;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.toggle-visibility-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #667eea;
+}
+
 .modal-footer {
   display: flex;
   gap: 12px;
@@ -839,6 +930,7 @@ onMounted(() => {
     transform: translateX(400px);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -862,6 +954,59 @@ onMounted(() => {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #999;
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666;
+}
+
+.markdown-content p {
+  margin: 0;
+  display: inline;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+  color: #333;
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content code {
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.markdown-content a {
+  color: #667eea;
+  text-decoration: none;
+  border-bottom: 1px solid #667eea;
+}
+
+.markdown-content a:hover {
+  color: #764ba2;
+  border-bottom-color: #764ba2;
+}
+
+/* Character Count */
+.char-count {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
 }
 
 @media (max-width: 768px) {

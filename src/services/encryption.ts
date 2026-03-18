@@ -47,7 +47,8 @@ export class EncryptionService {
               }
 
               const decrypted = safeStorage.decryptString(bufferToDecrypt);
-              this.masterKey = Buffer.from(decrypted, "utf-8");
+              // Decrypted string is base64 encoded, convert back to Buffer
+              this.masterKey = Buffer.from(decrypted, "base64");
               this.useKeychain = true;
               this.keychainAuthRequired = false;
               console.log("Master key loaded from keychain");
@@ -58,9 +59,10 @@ export class EncryptionService {
               );
               // If decryption fails, create a new master key
               this.masterKey = crypto.randomBytes(32);
-              const keyString = this.masterKey.toString("utf-8");
-              const encrypted = safeStorage.encryptString(keyString);
-              // Store as base64 encoded string for reliable serialization
+              // Store as base64 string before encrypting
+              const keyBase64 = this.masterKey.toString("base64");
+              const encrypted = safeStorage.encryptString(keyBase64);
+              // Store encrypted buffer as base64
               store.set("encryptedMasterKey", encrypted.toString("base64"));
               store.set("useKeychain", true);
               this.useKeychain = true;
@@ -69,9 +71,10 @@ export class EncryptionService {
             }
           } else {
             this.masterKey = crypto.randomBytes(32);
-            const keyString = this.masterKey.toString("utf-8");
-            const encrypted = safeStorage.encryptString(keyString);
-            // Store as base64 encoded string for reliable serialization
+            // Store as base64 string before encrypting
+            const keyBase64 = this.masterKey.toString("base64");
+            const encrypted = safeStorage.encryptString(keyBase64);
+            // Store encrypted buffer as base64
             store.set("encryptedMasterKey", encrypted.toString("base64"));
             store.set("useKeychain", true);
             this.useKeychain = true;
@@ -127,7 +130,8 @@ export class EncryptionService {
           }
 
           const decrypted = safeStorage.decryptString(bufferToDecrypt);
-          this.masterKey = Buffer.from(decrypted, "utf-8");
+          // Decrypted string is base64 encoded, convert back to Buffer
+          this.masterKey = Buffer.from(decrypted, "base64");
           this.useKeychain = true;
           this.keychainAuthRequired = false;
           store.set("useKeychain", true);
@@ -141,9 +145,10 @@ export class EncryptionService {
           );
           // If decryption fails, create a new master key
           this.masterKey = crypto.randomBytes(32);
-          const keyString = this.masterKey.toString("utf-8");
-          const encrypted = safeStorage.encryptString(keyString);
-          // Store as base64 encoded string for reliable serialization
+          // Store as base64 string before encrypting
+          const keyBase64 = this.masterKey.toString("base64");
+          const encrypted = safeStorage.encryptString(keyBase64);
+          // Store encrypted buffer as base64
           store.set("encryptedMasterKey", encrypted.toString("base64"));
           store.set("useKeychain", true);
           this.useKeychain = true;
@@ -154,9 +159,10 @@ export class EncryptionService {
         }
       } else {
         this.masterKey = crypto.randomBytes(32);
-        const keyString = this.masterKey.toString("utf-8");
-        const encrypted = safeStorage.encryptString(keyString);
-        // Store as base64 encoded string for reliable serialization
+        // Store as base64 string before encrypting
+        const keyBase64 = this.masterKey.toString("base64");
+        const encrypted = safeStorage.encryptString(keyBase64);
+        // Store encrypted buffer as base64
         store.set("encryptedMasterKey", encrypted.toString("base64"));
         store.set("useKeychain", true);
         this.useKeychain = true;
