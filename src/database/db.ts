@@ -48,7 +48,10 @@ export async function updateGroup(
 
 export async function deleteGroup(id: number): Promise<void> {
   const groupRepo = AppDataSource.getRepository(Group);
-  await groupRepo.delete(id);
+  const group = await groupRepo.findOne({ where: { id } });
+  if (group) {
+    await groupRepo.delete(id);
+  }
 }
 
 // ============ Token Operations ============
@@ -56,7 +59,7 @@ export async function deleteGroup(id: number): Promise<void> {
 export async function createToken(
   name: string,
   value: string,
-  env_name?: string,
+  env_name: string,
   description?: string,
   tags?: string[],
   website?: string,
@@ -67,27 +70,63 @@ export async function createToken(
   const token = tokenRepo.create({
     name,
     value: encryptedValue,
-    env_name: env_name || null,
+    env_name,
     description: description || null,
     tags: tags ? JSON.stringify(tags) : null,
     website: website || null,
     expired_at: expired_at ? new Date(expired_at) : null,
   });
-  return (await tokenRepo.save(token)) as any;
+  const savedToken = await tokenRepo.save(token);
+  const parsed = parseToken(savedToken);
+  return {
+    ...parsed,
+    group_ids: [],
+  } as any;
 }
 
 export async function getToken(id: number): Promise<TokenType | null> {
   const tokenRepo = AppDataSource.getRepository(Token);
-  const token = await tokenRepo.findOne({ where: { id } });
-  return token ? (parseToken(token) as any) : null;
+  const token = await tokenRepo.findOne({
+    where: { id },
+    relations: ["groupTokens"],
+  });
+  if (!token) return null;
+  const parsed = parseToken(token);
+  return {
+    ...parsed,
+    group_ids: token.groupTokens?.map((gt) => gt.group_id) || [],
+  } as any;
 }
 
 export async function getTokens(): Promise<TokenType[]> {
   const tokenRepo = AppDataSource.getRepository(Token);
+
+  // First, try to get all tokens without relations
   const tokens = await tokenRepo.find({
     order: { expired_at: "ASC", order_index: "ASC", created_at: "DESC" },
   });
-  return tokens.map(parseToken) as any[];
+
+  console.log(`getTokens: Found ${tokens.length} tokens`);
+
+  // Then load group associations separately
+  const result = await Promise.all(
+    tokens.map(async (token) => {
+      const parsed = parseToken(token);
+
+      // Load group_ids separately
+      const gtRepo = AppDataSource.getRepository(GroupToken);
+      const groupTokens = await gtRepo.find({
+        where: { token_id: token.id },
+      });
+
+      return {
+        ...parsed,
+        group_ids: groupTokens.map((gt) => gt.group_id),
+      } as any;
+    }),
+  );
+
+  return result;
 }
 
 export async function updateToken(
@@ -114,8 +153,15 @@ export async function updateToken(
     updateData.order_index = updates.order_index;
 
   await tokenRepo.update(id, updateData);
-  const token = await tokenRepo.findOneOrFail({ where: { id } });
-  return parseToken(token) as any;
+  const token = await tokenRepo.findOneOrFail({
+    where: { id },
+    relations: ["groupTokens"],
+  });
+  const parsed = parseToken(token);
+  return {
+    ...parsed,
+    group_ids: token.groupTokens?.map((gt) => gt.group_id) || [],
+  } as any;
 }
 
 export async function deleteToken(id: number): Promise<void> {

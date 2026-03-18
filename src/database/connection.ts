@@ -29,21 +29,6 @@ export const AppDataSource = new DataSource({
 export async function initializeDatabase() {
   if (!AppDataSource.isInitialized) {
     await AppDataSource.initialize();
-
-    // Create default group if it doesn't exist
-    const groupRepo = AppDataSource.getRepository(Group);
-    const defaultGroup = await groupRepo.findOne({
-      where: { name: "Default" },
-    });
-
-    if (!defaultGroup) {
-      const group = groupRepo.create({
-        name: "Default",
-        description: "Default group for tokens",
-      });
-      await groupRepo.save(group);
-    }
-
     console.log("Database initialized successfully");
   }
 }

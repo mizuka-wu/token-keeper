@@ -19,6 +19,13 @@
           <h2>Groups</h2>
         </div>
         <div class="groups-list">
+          <!-- Ungrouped section -->
+          <div :class="['group-item', { active: activeGroupId === UNGROUPED_ID }]" @click="selectGroup(UNGROUPED_ID)">
+            <div class="group-name">未分组</div>
+            <div class="group-count">{{ getGroupTokenCount(UNGROUPED_ID) }}</div>
+          </div>
+
+          <!-- Regular groups -->
           <div v-for="group in groups" :key="group.id" :class="['group-item', { active: activeGroupId === group.id }]"
             @click="selectGroup(group.id)">
             <div class="group-name">{{ group.name }}</div>
@@ -162,8 +169,8 @@
             <div class="char-count">{{ tokenForm.value.length }}/500</div>
           </div>
           <div class="form-group">
-            <label>Environment (Optional)</label>
-            <input v-model="tokenForm.env_name" type="text" placeholder="e.g., PROD_API_KEY" />
+            <label>Environment</label>
+            <input v-model="tokenForm.env_name" type="text" placeholder="e.g., PROD_API_KEY" required />
           </div>
           <div class="form-group">
             <label>Website (Optional)</label>
@@ -216,6 +223,7 @@ const renderMarkdown = (text: string): string => {
   return marked(text) as string
 }
 
+const UNGROUPED_ID = -1 // Special ID for ungrouped tokens
 const groups = ref<Group[]>([])
 const tokens = ref<Token[]>([])
 const activeGroupId = ref<number | null>(null)
@@ -240,20 +248,41 @@ const tokenForm = ref({
 
 const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
-const activeGroup = computed(() => groups.value.find((g) => g.id === activeGroupId.value))
+const activeGroup = computed(() => {
+  if (activeGroupId.value === UNGROUPED_ID) {
+    return { id: UNGROUPED_ID, name: '未分组', description: '不属于任何组的 tokens' } as any
+  }
+  return groups.value.find((g) => g.id === activeGroupId.value)
+})
 
 const filteredTokens = computed(() => {
   if (!activeGroupId.value) return []
+
+  if (activeGroupId.value === UNGROUPED_ID) {
+    // Show tokens that don't belong to any group
+    return tokens.value.filter((t) => {
+      const groupIds = (t as any).group_ids || []
+      return groupIds.length === 0
+    })
+  }
+
   return tokens.value.filter((t) => {
-    const groups = (t as any).group_ids || []
-    return groups.includes(activeGroupId.value)
+    const groupIds = (t as any).group_ids || []
+    return groupIds.includes(activeGroupId.value)
   })
 })
 
 const getGroupTokenCount = (groupId: number) => {
+  if (groupId === UNGROUPED_ID) {
+    return tokens.value.filter((t) => {
+      const groupIds = (t as any).group_ids || []
+      return groupIds.length === 0
+    }).length
+  }
+
   return tokens.value.filter((t) => {
-    const groups = (t as any).group_ids || []
-    return groups.includes(groupId)
+    const groupIds = (t as any).group_ids || []
+    return groupIds.includes(groupId)
   }).length
 }
 
@@ -262,8 +291,9 @@ const loadData = async () => {
     groups.value = await window.ipcRenderer.invoke('group:list')
     tokens.value = await window.ipcRenderer.invoke('token:list')
 
-    if (groups.value.length > 0 && !activeGroupId.value) {
-      activeGroupId.value = groups.value[0].id
+    // Default to Ungrouped if no group is selected
+    if (!activeGroupId.value) {
+      activeGroupId.value = UNGROUPED_ID
     }
   } catch (error) {
     showToast('Failed to load data', 'error')
@@ -319,8 +349,8 @@ const saveGroup = async () => {
 
 const saveToken = async () => {
   try {
-    if (!tokenForm.value.name.trim() || !tokenForm.value.value.trim()) {
-      showToast('Token name and value are required', 'error')
+    if (!tokenForm.value.name.trim() || !tokenForm.value.value.trim() || !tokenForm.value.env_name.trim()) {
+      showToast('Token name, value, and environment are required', 'error')
       return
     }
 
@@ -341,7 +371,7 @@ const saveToken = async () => {
       })
       showToast('Token updated successfully', 'success')
     } else {
-      await window.ipcRenderer.invoke('token:create', {
+      const newToken = await window.ipcRenderer.invoke('token:create', {
         name: tokenForm.value.name,
         value: tokenForm.value.value,
         env_name: tokenForm.value.env_name || undefined,
@@ -350,6 +380,12 @@ const saveToken = async () => {
         tags: tags.length > 0 ? tags : undefined,
         expired_at: tokenForm.value.expired_at || undefined,
       })
+
+      // Associate token with current group if one is selected
+      if (activeGroupId.value && newToken?.id) {
+        await window.ipcRenderer.invoke('groupToken:add', activeGroupId.value, newToken.id)
+      }
+
       showToast('Token created successfully', 'success')
     }
 
