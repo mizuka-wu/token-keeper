@@ -8,18 +8,21 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:trace": "NODE_OPTIONS=--trace-deprecation vite",
     "build": "vue-tsc && vite build && electron-builder",
     "preview": "vite preview",
     "test": "vitest",
     "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
+    "@mizuka-wu/ipc-express": "^0.4.2",
     "better-sqlite3": "^12.8.0",
     "electron-store": "^11.0.2",
     "express": "^5.2.1",
     "marked": "^17.0.4",
     "reflect-metadata": "^0.2.2",
     "sortablejs": "^1.15.0",
+    "source-map-support": "^0.5.21",
     "typeorm": "^0.3.28",
     "vue": "^3.4.21",
     "vue-draggable-plus": "^0.3.5",

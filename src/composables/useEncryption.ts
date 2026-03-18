@@ -10,28 +10,46 @@ export interface AuthResult {
 }
 
 export function useEncryption() {
+  const ipcClient = (window as any).ipcClient;
+
   const isMasterKeyInitialized = async (): Promise<boolean> => {
-    return window.ipcRenderer.invoke("encryption:isMasterKeyInitialized");
+    const response = await (ipcClient.get as any)(
+      "/api/encryption/initialized",
+    );
+    return response.data.initialized;
   };
 
   const getStatus = async (): Promise<EncryptionStatus> => {
-    return window.ipcRenderer.invoke("encryption:getStatus");
+    const response = await (ipcClient.get as any)("/api/encryption/status");
+    return response.data;
   };
 
   const retryKeychainAuth = async (): Promise<AuthResult> => {
-    return window.ipcRenderer.invoke("encryption:retryKeychainAuth");
+    const response = await (ipcClient.post as any)(
+      "/api/encryption/retry-keychain-auth",
+    );
+    return response.data;
   };
 
   const useLocalStorageTemporarily = async (): Promise<AuthResult> => {
-    return window.ipcRenderer.invoke("encryption:useLocalStorageTemporarily");
+    const response = await (ipcClient.post as any)(
+      "/api/encryption/use-local-storage",
+    );
+    return response.data;
   };
 
   const encrypt = async (plaintext: string): Promise<string> => {
-    return window.ipcRenderer.invoke("encryption:encrypt", plaintext);
+    const response = await (ipcClient.post as any)("/api/encryption/encrypt", {
+      plaintext,
+    });
+    return response.data.ciphertext;
   };
 
   const decrypt = async (ciphertext: string): Promise<string> => {
-    return window.ipcRenderer.invoke("encryption:decrypt", ciphertext);
+    const response = await (ipcClient.post as any)("/api/encryption/decrypt", {
+      ciphertext,
+    });
+    return response.data.plaintext;
   };
 
   return {

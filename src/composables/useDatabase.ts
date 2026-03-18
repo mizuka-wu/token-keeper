@@ -6,7 +6,7 @@ import type {
   GroupWithTokens,
 } from "../types/database";
 
-const ipcRenderer = (window as any).ipcRenderer;
+const ipcClient = (window as any).ipcClient;
 
 export function useDatabase() {
   const groups = ref<Group[]>([]);
@@ -20,7 +20,8 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      groups.value = await ipcRenderer.invoke("group:list");
+      const response = await (ipcClient.get as any)("/api/groups");
+      groups.value = response.data;
     } catch (e) {
       error.value = (e as Error).message;
     } finally {
@@ -32,13 +33,12 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const newGroup = await ipcRenderer.invoke(
-        "group:create",
+      const response = await (ipcClient.post as any)("/api/groups", {
         name,
         description,
-      );
-      groups.value.unshift(newGroup);
-      return newGroup;
+      });
+      groups.value.unshift(response.data);
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -51,17 +51,15 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke(
-        "group:update",
-        id,
+      const response = await (ipcClient.put as any)(`/api/groups/${id}`, {
         name,
         description,
-      );
+      });
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
-        groups.value[index] = updated;
+        groups.value[index] = response.data;
       }
-      return updated;
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -74,7 +72,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("group:delete", id);
+      await (ipcClient.delete as any)(`/api/groups/${id}`);
       groups.value = groups.value.filter((g) => g.id !== id);
     } catch (e) {
       error.value = (e as Error).message;
@@ -88,7 +86,8 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("group:get", id);
+      const response = await (ipcClient.get as any)(`/api/groups/${id}`);
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -103,7 +102,10 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("group:withTokens", id);
+      const response = await (ipcClient.get as any)(
+        `/api/groups/${id}/with-tokens`,
+      );
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -118,7 +120,8 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      tokens.value = await ipcRenderer.invoke("token:list");
+      const response = await (ipcClient.get as any)("/api/tokens");
+      tokens.value = response.data;
     } catch (e) {
       error.value = (e as Error).message;
     } finally {
@@ -138,9 +141,9 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const newToken = await ipcRenderer.invoke("token:create", payload);
-      tokens.value.unshift(newToken);
-      return newToken;
+      const response = await (ipcClient.post as any)("/api/tokens", payload);
+      tokens.value.unshift(response.data);
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -156,12 +159,15 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke("token:update", id, updates);
+      const response = await (ipcClient.put as any)(
+        `/api/tokens/${id}`,
+        updates,
+      );
       const index = tokens.value.findIndex((t) => t.id === id);
       if (index !== -1) {
-        tokens.value[index] = updated;
+        tokens.value[index] = response.data;
       }
-      return updated;
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -174,7 +180,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("token:delete", id);
+      await (ipcClient.delete as any)(`/api/tokens/${id}`);
       tokens.value = tokens.value.filter((t) => t.id !== id);
     } catch (e) {
       error.value = (e as Error).message;
@@ -188,7 +194,8 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("token:get", id);
+      const response = await (ipcClient.get as any)(`/api/tokens/${id}`);
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -201,7 +208,10 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("token:search", query);
+      const response = await (ipcClient.get as any)(
+        `/api/tokens/search/${query}`,
+      );
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -216,7 +226,10 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("token:withGroups", id);
+      const response = await (ipcClient.get as any)(
+        `/api/tokens/${id}/with-groups`,
+      );
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -231,7 +244,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("groupToken:add", groupId, tokenId);
+      await (ipcClient.post as any)(`/api/groups/${groupId}/tokens/${tokenId}`);
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -244,7 +257,9 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("groupToken:remove", groupId, tokenId);
+      await (ipcClient.delete as any)(
+        `/api/groups/${groupId}/tokens/${tokenId}`,
+      );
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -257,7 +272,10 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("groupToken:getGroupTokens", groupId);
+      const response = await (ipcClient.get as any)(
+        `/api/groups/${groupId}/tokens`,
+      );
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -270,7 +288,10 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      return await ipcRenderer.invoke("groupToken:getTokenGroups", tokenId);
+      const response = await (ipcClient.get as any)(
+        `/api/tokens/${tokenId}/groups`,
+      );
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -283,7 +304,8 @@ export function useDatabase() {
 
   async function getActiveGroupId() {
     try {
-      return await ipcRenderer.invoke("config:getActiveGroupId");
+      const response = await (ipcClient.get as any)("/api/config/active-group");
+      return response.data.activeGroupId;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -292,7 +314,7 @@ export function useDatabase() {
 
   async function setActiveGroupId(groupId: number | null) {
     try {
-      await ipcRenderer.invoke("config:setActiveGroupId", groupId);
+      await (ipcClient.put as any)("/api/config/active-group", { groupId });
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -301,7 +323,8 @@ export function useDatabase() {
 
   async function getGroupConfig() {
     try {
-      return await ipcRenderer.invoke("config:getGroupConfig");
+      const response = await (ipcClient.get as any)("/api/config/group");
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -314,16 +337,14 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke(
-        "order:updateGroupOrder",
-        id,
+      const response = await (ipcClient.put as any)(`/api/groups/${id}/order`, {
         orderIndex,
-      );
+      });
       const index = groups.value.findIndex((g) => g.id === id);
       if (index !== -1) {
-        groups.value[index] = updated;
+        groups.value[index] = response.data;
       }
-      return updated;
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -336,16 +357,14 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      const updated = await ipcRenderer.invoke(
-        "order:updateTokenOrder",
-        id,
+      const response = await (ipcClient.put as any)(`/api/tokens/${id}/order`, {
         orderIndex,
-      );
+      });
       const index = tokens.value.findIndex((t) => t.id === id);
       if (index !== -1) {
-        tokens.value[index] = updated;
+        tokens.value[index] = response.data;
       }
-      return updated;
+      return response.data;
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -358,7 +377,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("order:reorderGroups", groupIds);
+      await (ipcClient.post as any)("/api/groups/reorder", { groupIds });
       await listGroups();
     } catch (e) {
       error.value = (e as Error).message;
@@ -372,7 +391,7 @@ export function useDatabase() {
     loading.value = true;
     error.value = null;
     try {
-      await ipcRenderer.invoke("order:reorderTokens", tokenIds);
+      await (ipcClient.post as any)("/api/tokens/reorder", { tokenIds });
       await listTokens();
     } catch (e) {
       error.value = (e as Error).message;

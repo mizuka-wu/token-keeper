@@ -1,3 +1,6 @@
+import sourceMapSupport from "source-map-support";
+sourceMapSupport.install();
+
 import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -107,6 +110,11 @@ ipcMain.on("open-system-settings", () => {
 });
 
 app.whenReady().then(async () => {
+  await initializeDatabase();
+  initializeGroupConfig();
+  setupIPC();
+  createWindow();
+
   try {
     await EncryptionService.initializeMasterKey();
   } catch (error) {
@@ -117,17 +125,8 @@ app.whenReady().then(async () => {
       error.code === "KEYCHAIN_AUTH_REQUIRED"
     ) {
       console.error("Keychain authorization required");
-      await initializeDatabase();
-      initializeGroupConfig();
-      setupIPC();
-      createWindow();
       return;
     }
     throw error;
   }
-
-  await initializeDatabase();
-  initializeGroupConfig();
-  setupIPC();
-  createWindow();
 });

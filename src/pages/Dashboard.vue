@@ -336,8 +336,11 @@ const getGroupTokenCount = (groupId: number) => {
 
 const loadData = async () => {
   try {
-    groups.value = await window.ipcRenderer.invoke('group:list')
-    tokens.value = await window.ipcRenderer.invoke('token:list')
+    const ipcClient = (window as any).ipcClient
+    const groupsResponse = await (ipcClient.get as any)('/api/groups')
+    const tokensResponse = await (ipcClient.get as any)('/api/tokens')
+    groups.value = groupsResponse.data
+    tokens.value = tokensResponse.data
 
     // Default to Ungrouped if no group is selected
     if (!activeGroupId.value) {
@@ -374,14 +377,15 @@ const saveGroup = async () => {
       return
     }
 
+    const ipcClient = (window as any).ipcClient
     if (editingGroup.value) {
-      await window.ipcRenderer.invoke('group:update', editingGroup.value.id, {
+      await (ipcClient.put as any)(`/api/groups/${editingGroup.value.id}`, {
         name: groupForm.value.name,
         description: groupForm.value.description,
       })
       showToast('Group updated successfully', 'success')
     } else {
-      await window.ipcRenderer.invoke('group:create', {
+      await (ipcClient.post as any)('/api/groups', {
         name: groupForm.value.name,
         description: groupForm.value.description,
       })
@@ -421,15 +425,17 @@ const saveToken = async () => {
       return
     }
 
+    const ipcClient = (window as any).ipcClient
     if (editingToken.value) {
-      await window.ipcRenderer.invoke('token:update', editingToken.value.id, tokenPayload)
+      await (ipcClient.put as any)(`/api/tokens/${editingToken.value.id}`, tokenPayload)
       showToast('Token updated successfully', 'success')
     } else {
-      const newToken = await window.ipcRenderer.invoke('token:create', tokenPayload)
+      const response = await (ipcClient.post as any)('/api/tokens', tokenPayload)
+      const newToken = response.data
 
       // Associate token with current group if one is selected (but not with the virtual "Ungrouped")
       if (activeGroupId.value && activeGroupId.value !== UNGROUPED_ID && newToken?.id) {
-        await window.ipcRenderer.invoke('groupToken:add', activeGroupId.value, newToken.id)
+        await (ipcClient.post as any)(`/api/groups/${activeGroupId.value}/tokens/${newToken.id}`)
       }
 
       showToast('Token created successfully', 'success')
@@ -457,7 +463,8 @@ const deleteToken = async (tokenId: number) => {
   if (!confirm('Are you sure you want to delete this token?')) return
 
   try {
-    await window.ipcRenderer.invoke('token:delete', tokenId)
+    const ipcClient = (window as any).ipcClient
+    await (ipcClient.delete as any)(`/api/tokens/${tokenId}`)
     showToast('Token deleted successfully', 'success')
     await loadData()
   } catch (error) {
@@ -518,6 +525,7 @@ const addSelectedToGroup = () => {
 const addTokensToGroup = async (groupId: number) => {
   try {
     const selectedIds = Array.from(selectedTokenIds.value)
+    const ipcClient = (window as any).ipcClient
 
     for (const tokenId of selectedIds) {
       // Check if token is already in this group
@@ -525,7 +533,7 @@ const addTokensToGroup = async (groupId: number) => {
       if (token) {
         const groupIds = (token as any).group_ids || []
         if (!groupIds.includes(groupId)) {
-          await window.ipcRenderer.invoke('groupToken:add', groupId, tokenId)
+          await (ipcClient.post as any)(`/api/groups/${groupId}/tokens/${tokenId}`)
         }
       }
     }
@@ -605,7 +613,8 @@ const handleTokenDrop = async (event: DragEvent, targetToken: Token) => {
   // 保存新的排序到后端
   try {
     const tokenIds = filteredTokens.value.map(t => t.id)
-    await window.ipcRenderer.invoke('order:reorderTokens', tokenIds)
+    const ipcClient = (window as any).ipcClient
+    await (ipcClient.post as any)('/api/tokens/reorder', { tokenIds })
     showToast('Token order updated', 'success')
   } catch (error) {
     showToast('Failed to update token order', 'error')
@@ -639,18 +648,19 @@ const handleGroupDrop = async (targetGroupId: number) => {
     }
 
     const groupIds = (token as any).group_ids || []
+    const ipcClient = (window as any).ipcClient
 
     // 如果目标是未分组，则移除所有分组
     if (targetGroupId === UNGROUPED_ID) {
       // 从所有分组中移除该 token
       for (const groupId of groupIds) {
-        await window.ipcRenderer.invoke('groupToken:remove', groupId, tokenId)
+        await (ipcClient.delete as any)(`/api/groups/${groupId}/tokens/${tokenId}`)
       }
       showToast('Token moved to ungrouped', 'success')
     } else {
       // 如果 token 还不在目标分组中，添加到目标分组
       if (!groupIds.includes(targetGroupId)) {
-        await window.ipcRenderer.invoke('groupToken:add', targetGroupId, tokenId)
+        await (ipcClient.post as any)(`/api/groups/${targetGroupId}/tokens/${tokenId}`)
         showToast('Token added to group', 'success')
       } else {
         showToast('Token already in this group', 'error')
