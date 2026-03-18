@@ -38,7 +38,8 @@ export class EncryptionService {
               let bufferToDecrypt: Buffer;
 
               if (typeof encryptedMasterKey === "string") {
-                bufferToDecrypt = Buffer.from(encryptedMasterKey, "utf-8");
+                // Store format: base64 encoded buffer
+                bufferToDecrypt = Buffer.from(encryptedMasterKey, "base64");
               } else if (Buffer.isBuffer(encryptedMasterKey)) {
                 bufferToDecrypt = encryptedMasterKey;
               } else {
@@ -59,7 +60,8 @@ export class EncryptionService {
               this.masterKey = crypto.randomBytes(32);
               const keyString = this.masterKey.toString("utf-8");
               const encrypted = safeStorage.encryptString(keyString);
-              store.set("encryptedMasterKey", encrypted.toString("utf-8"));
+              // Store as base64 encoded string for reliable serialization
+              store.set("encryptedMasterKey", encrypted.toString("base64"));
               store.set("useKeychain", true);
               this.useKeychain = true;
               this.keychainAuthRequired = false;
@@ -69,7 +71,8 @@ export class EncryptionService {
             this.masterKey = crypto.randomBytes(32);
             const keyString = this.masterKey.toString("utf-8");
             const encrypted = safeStorage.encryptString(keyString);
-            store.set("encryptedMasterKey", encrypted.toString("utf-8"));
+            // Store as base64 encoded string for reliable serialization
+            store.set("encryptedMasterKey", encrypted.toString("base64"));
             store.set("useKeychain", true);
             this.useKeychain = true;
             this.keychainAuthRequired = false;
@@ -115,7 +118,8 @@ export class EncryptionService {
           let bufferToDecrypt: Buffer;
 
           if (typeof encryptedMasterKey === "string") {
-            bufferToDecrypt = Buffer.from(encryptedMasterKey, "utf-8");
+            // Store format: base64 encoded buffer
+            bufferToDecrypt = Buffer.from(encryptedMasterKey, "base64");
           } else if (Buffer.isBuffer(encryptedMasterKey)) {
             bufferToDecrypt = encryptedMasterKey;
           } else {
@@ -139,7 +143,8 @@ export class EncryptionService {
           this.masterKey = crypto.randomBytes(32);
           const keyString = this.masterKey.toString("utf-8");
           const encrypted = safeStorage.encryptString(keyString);
-          store.set("encryptedMasterKey", encrypted.toString("utf-8"));
+          // Store as base64 encoded string for reliable serialization
+          store.set("encryptedMasterKey", encrypted.toString("base64"));
           store.set("useKeychain", true);
           this.useKeychain = true;
           this.keychainAuthRequired = false;
@@ -151,7 +156,8 @@ export class EncryptionService {
         this.masterKey = crypto.randomBytes(32);
         const keyString = this.masterKey.toString("utf-8");
         const encrypted = safeStorage.encryptString(keyString);
-        store.set("encryptedMasterKey", encrypted.toString("utf-8"));
+        // Store as base64 encoded string for reliable serialization
+        store.set("encryptedMasterKey", encrypted.toString("base64"));
         store.set("useKeychain", true);
         this.useKeychain = true;
         this.keychainAuthRequired = false;
