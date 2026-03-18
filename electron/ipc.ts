@@ -19,9 +19,9 @@ export function setupIPC() {
 
   // ============ Group Routes ============
 
-  app.get("/api/groups", (_req, res) => {
+  app.get("/api/groups", async (_req, res) => {
     try {
-      const groups = db.getGroups();
+      const groups = await db.getGroups();
       res.status(200).send(groups);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -38,10 +38,10 @@ export function setupIPC() {
     }
   });
 
-  app.get("/api/groups/:id", (req, res) => {
+  app.get("/api/groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const group = db.getGroup(id);
+      const group = await db.getGroup(id);
       res.status(200).send(group);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -69,10 +69,10 @@ export function setupIPC() {
     }
   });
 
-  app.get("/api/groups/:id/with-tokens", (req, res) => {
+  app.get("/api/groups/:id/with-tokens", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const groupWithTokens = db.getGroupWithTokens(id);
+      const groupWithTokens = await db.getGroupWithTokens(id);
       res.status(200).send(groupWithTokens);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -81,9 +81,9 @@ export function setupIPC() {
 
   // ============ Token Routes ============
 
-  app.get("/api/tokens", (_req, res) => {
+  app.get("/api/tokens", async (_req, res) => {
     try {
-      const tokens = db.getTokens();
+      const tokens = await db.getTokens();
       res.status(200).send(tokens);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -100,10 +100,10 @@ export function setupIPC() {
     }
   });
 
-  app.get("/api/tokens/:id", (req, res) => {
+  app.get("/api/tokens/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const token = db.getToken(id);
+      const token = await db.getToken(id);
       res.status(200).send(token);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -131,20 +131,20 @@ export function setupIPC() {
     }
   });
 
-  app.get("/api/tokens/search/:query", (req, res) => {
+  app.get("/api/tokens/search/:query", async (req, res) => {
     try {
       const query = req.params.query;
-      const results = db.searchTokens(query);
+      const results = await db.searchTokens(query);
       res.status(200).send(results);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
     }
   });
 
-  app.get("/api/tokens/:id/with-groups", (req, res) => {
+  app.get("/api/tokens/:id/with-groups", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const tokenWithGroups = db.getTokenWithGroups(id);
+      const tokenWithGroups = await db.getTokenWithGroups(id);
       res.status(200).send(tokenWithGroups);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -219,20 +219,20 @@ export function setupIPC() {
     }
   });
 
-  app.get("/api/groups/:groupId/tokens", (req, res) => {
+  app.get("/api/groups/:groupId/tokens", async (req, res) => {
     try {
       const groupId = parseInt(req.params.groupId);
-      const tokens = db.getGroupTokens(groupId);
+      const tokens = await db.getGroupTokens(groupId);
       res.status(200).send(tokens);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
     }
   });
 
-  app.get("/api/tokens/:tokenId/groups", (req, res) => {
+  app.get("/api/tokens/:tokenId/groups", async (req, res) => {
     try {
       const tokenId = parseInt(req.params.tokenId);
-      const groups = db.getTokenGroups(tokenId);
+      const groups = await db.getTokenGroups(tokenId);
       res.status(200).send(groups);
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });

@@ -15,7 +15,7 @@
     "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
-    "@mizuka-wu/ipc-express": "^0.4.2",
+    "@mizuka-wu/ipc-express": "^0.4.3",
     "better-sqlite3": "^12.8.0",
     "electron-store": "^11.0.2",
     "express": "^5.2.1",

@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@mizuka-wu/ipc-express':
-    specifier: ^0.4.2
-    version: link:../ipc-express
+    specifier: ^0.4.3
+    version: 0.4.3
   better-sqlite3:
     specifier: ^12.8.0
     version: 12.8.0
@@ -538,6 +538,13 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+
+  /@mizuka-wu/ipc-express@0.4.3:
+    resolution: {integrity: sha512-iQeqmXCfyybaCyAZ80BDCSxvBZ3ml86qhCu8ctdKx5Oqb46ZPs8EYK897Ila8GWoTSE4HzY6aXCnZNs6iavNng==}
+    dependencies:
+      nanoid: 5.1.7
+      uuid: 9.0.1
+    dev: false
 
   /@nodelib/fs.scandir@2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -3337,6 +3344,12 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  /nanoid@5.1.7:
+    resolution: {integrity: sha512-ua3NDgISf6jdwezAheMOk4mbE1LXjm1DfMUDMuJf4AqxLFK3ccGpgWizwa5YV7Yz9EpXwEaWoRXSb/BnV0t5dQ==}
+    engines: {node: ^18 || >=20}
+    hasBin: true
+    dev: false
+
   /napi-build-utils@2.0.0:
     resolution: {integrity: sha512-GEbrYkbfF7MoNaoh2iGG84Mnf/WZfB0GdGEsM8wz7Expx/LlWf5U8t9nvJKXSp3qr5IsEbK04cBGhol/KwOsWA==}
     dev: false
@@ -4554,6 +4567,11 @@ packages:
 
   /uuid@11.1.0:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
+    dev: false
+
+  /uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
     dev: false
 
