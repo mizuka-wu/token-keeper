@@ -18,8 +18,10 @@
     "electron-store": "^11.0.2",
     "marked": "^17.0.4",
     "reflect-metadata": "^0.2.2",
+    "sortablejs": "^1.15.0",
     "typeorm": "^0.3.28",
     "vue": "^3.4.21",
+    "vue-draggable-plus": "^0.3.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {

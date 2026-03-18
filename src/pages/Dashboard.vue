@@ -19,13 +19,10 @@
           <h2>Groups</h2>
         </div>
         <div class="groups-list">
-          <!-- Ungrouped section -->
           <div :class="['group-item', { active: activeGroupId === UNGROUPED_ID }]" @click="selectGroup(UNGROUPED_ID)">
             <div class="group-name">未分组</div>
             <div class="group-count">{{ getGroupTokenCount(UNGROUPED_ID) }}</div>
           </div>
-
-          <!-- Regular groups -->
           <div v-for="group in groups" :key="group.id" :class="['group-item', { active: activeGroupId === group.id }]"
             @click="selectGroup(group.id)">
             <div class="group-name">{{ group.name }}</div>
@@ -51,165 +48,201 @@
             </button>
           </div>
 
-          <div v-else class="tokens-grid">
-            <div v-for="token in filteredTokens" :key="token.id" class="token-card" @click="selectToken(token)">
-              <div class="token-header">
-                <h3>{{ token.name }}</h3>
-                <div class="token-actions">
-                  <button @click.stop="copyToClipboard(token.value)" class="action-btn" title="Copy token">
-                    📋
-                  </button>
-                  <button @click.stop="selectToken(token)" class="action-btn" title="Edit token">
-                    ✏️
-                  </button>
-                  <button @click.stop="deleteToken(token.id)" class="action-btn delete" title="Delete token">
-                    🗑️
-                  </button>
+          <div v-else class="tokens-list">
+            <div v-if="selectedTokenIds.size > 0" class="batch-actions">
+              <span>{{ selectedTokenIds.size }} selected</span>
+              <button @click="addSelectedToGroup" class="btn btn-secondary">
+                Add to Group
+              </button>
+              <button @click="clearSelection" class="btn btn-secondary">
+                Clear
+              </button>
+            </div>
+            <VueDraggable v-model="filteredTokens" class="tokens-grid" :options="dragOptions" @change="onTokenDragEnd">
+              <div v-for="token in filteredTokens" :key="token.id"
+                :class="['token-card', { selected: selectedTokenIds.has(token.id) }]"
+                @click="handleTokenClick(token, $event)">
+                <div class="token-checkbox">
+                  <input type="checkbox" :checked="selectedTokenIds.has(token.id)"
+                    @click.stop="toggleTokenSelection(token.id)" />
                 </div>
-              </div>
-
-              <div class="token-body">
-                <div class="token-field token-value-field">
-                  <span class="label">Value:</span>
-                  <div class="token-value-display">
-                    <span v-if="isTokenVisible(token.id)" class="value token-visible">{{ token.value }}</span>
-                    <span v-else class="value token-hidden">••••••••</span>
-                    <button @click.stop="toggleTokenVisibility(token.id)" class="visibility-toggle"
-                      :title="isTokenVisible(token.id) ? 'Hide' : 'Show'">
-                      {{ isTokenVisible(token.id) ? '👁️' : '🙈' }}
-                    </button>
+                <div class="token-content">
+                  <div class="token-header">
+                    <h3>{{ token.name }}</h3>
+                    <div class="token-actions">
+                      <button @click.stop="copyToClipboard(token.value)" class="action-btn" title="Copy token">
+                        📋
+                      </button>
+                      <button @click.stop="selectToken(token)" class="action-btn" title="Edit token">
+                        ✏️
+                      </button>
+                      <button @click.stop="deleteToken(token.id)" class="action-btn delete" title="Delete token">
+                        🗑️
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div v-if="token.env_name" class="token-field">
-                  <span class="label">Env:</span>
-                  <span class="value">{{ token.env_name }}</span>
-                </div>
-                <div v-if="token.website" class="token-field">
-                  <span class="label">Website:</span>
-                  <a :href="token.website" target="_blank" class="value link">
-                    {{ token.website }}
-                  </a>
-                </div>
-                <div v-if="token.description" class="token-field">
-                  <span class="label">Description:</span>
-                  <div class="value markdown-content" v-html="renderMarkdown(token.description)"></div>
-                </div>
-                <div v-if="token.tags && token.tags.length" class="token-field">
-                  <span class="label">Tags:</span>
-                  <div class="tags">
-                    <span v-for="tag in token.tags" :key="tag" class="tag">
-                      {{ tag }}
+
+                  <div class="token-body">
+                    <div class="token-field token-value-field">
+                      <span class="label">Value:</span>
+                      <div class="token-value-display">
+                        <span v-if="isTokenVisible(token.id)" class="value token-visible">{{ token.value }}</span>
+                        <span v-else class="value token-hidden">••••••••</span>
+                        <button @click.stop="toggleTokenVisibility(token.id)" class="visibility-toggle"
+                          :title="isTokenVisible(token.id) ? 'Hide' : 'Show'">
+                          {{ isTokenVisible(token.id) ? '👁️' : '🙈' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div v-if="token.env_name" class="token-field">
+                      <span class="label">Env:</span>
+                      <span class="value">{{ token.env_name }}</span>
+                    </div>
+                    <div v-if="token.website" class="token-field">
+                      <span class="label">Website:</span>
+                      <a :href="token.website" target="_blank" class="value link">
+                        {{ token.website }}
+                      </a>
+                    </div>
+                    <div v-if="token.description" class="token-field">
+                      <span class="label">Description:</span>
+                      <div class="value markdown-content" v-html="renderMarkdown(token.description)"></div>
+                    </div>
+                    <div v-if="token.tags && token.tags.length" class="token-field">
+                      <span class="label">Tags:</span>
+                      <div class="tags">
+                        <span v-for="tag in token.tags" :key="tag" class="tag">
+                          {{ tag }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="token-footer">
+                    <span v-if="token.expired_at" class="expiry">
+                      Expires: {{ formatDate(token.expired_at) }}
                     </span>
                   </div>
                 </div>
               </div>
-
-              <div class="token-footer">
-                <span v-if="token.expired_at" class="expiry">
-                  Expires: {{ formatDate(token.expired_at) }}
-                </span>
-              </div>
-            </div>
+            </VueDraggable>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Add/Edit Group Modal -->
-    <div v-if="showAddGroupModal" class="modal-overlay" @click.self="showAddGroupModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>{{ editingGroup ? 'Edit Group' : 'New Group' }}</h2>
-          <button @click="showAddGroupModal = false" class="close-btn">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Group Name</label>
-            <input v-model="groupForm.name" type="text" placeholder="e.g., Production" />
+  <!-- Group Select Menu for Batch Add -->
+  <div v-if="showGroupSelectMenu" class="modal-overlay" @click.self="showGroupSelectMenu = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add to Group</h2>
+        <button @click="showGroupSelectMenu = false" class="close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="groups-select-list">
+          <div v-for="group in groups" :key="group.id" class="group-select-item" @click="addTokensToGroup(group.id)">
+            {{ group.name }}
           </div>
-          <div class="form-group">
-            <label>Description (Optional) - Markdown supported</label>
-            <textarea v-model="groupForm.description"
-              placeholder="e.g., Production environment tokens (max 100 characters)" maxlength="100"
-              rows="3"></textarea>
-            <div class="char-count">{{ groupForm.description.length }}/100</div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showAddGroupModal = false" class="btn btn-secondary">Cancel</button>
-          <button @click="saveGroup" class="btn btn-primary">
-            {{ editingGroup ? 'Update' : 'Create' }}
-          </button>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Add/Edit Token Modal -->
-    <div v-if="showAddTokenModal" class="modal-overlay" @click.self="showAddTokenModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>{{ editingToken ? 'Edit Token' : 'New Token' }}</h2>
-          <button @click="showAddTokenModal = false" class="close-btn">✕</button>
+  <!-- Add/Edit Group Modal -->
+  <div v-if="showAddGroupModal" class="modal-overlay" @click.self="showAddGroupModal = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>{{ editingGroup ? 'Edit Group' : 'New Group' }}</h2>
+        <button @click="showAddGroupModal = false" class="close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Group Name</label>
+          <input v-model="groupForm.name" type="text" placeholder="e.g., Production" />
         </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Token Name</label>
-            <input v-model="tokenForm.name" type="text" placeholder="e.g., API Key" />
-          </div>
-          <div class="form-group">
-            <label>Token Value (Max 500 characters)</label>
-            <div class="token-value-wrapper">
-              <textarea v-model="tokenForm.value" :type="showTokenValue ? 'text' : 'password'"
-                placeholder="Your secret token value" maxlength="500" rows="3"></textarea>
-              <button type="button" @click="showTokenValue = !showTokenValue" class="toggle-visibility-btn"
-                :title="showTokenValue ? 'Hide token' : 'Show token'">
-                {{ showTokenValue ? '👁️' : '🙈' }}
-              </button>
-            </div>
-            <div class="char-count">{{ tokenForm.value.length }}/500</div>
-          </div>
-          <div class="form-group">
-            <label>Environment</label>
-            <input v-model="tokenForm.env_name" type="text" placeholder="e.g., PROD_API_KEY" required />
-          </div>
-          <div class="form-group">
-            <label>Website (Optional)</label>
-            <input v-model="tokenForm.website" type="url" placeholder="https://example.com" />
-          </div>
-          <div class="form-group">
-            <label>Description (Optional) - Markdown supported</label>
-            <textarea v-model="tokenForm.description" placeholder="Token description (max 100 characters)"
-              maxlength="100" rows="3"></textarea>
-            <div class="char-count">{{ tokenForm.description.length }}/100</div>
-          </div>
-          <div class="form-group">
-            <label>Tags (Optional)</label>
-            <input v-model="tokenForm.tagsInput" type="text" placeholder="Separate tags with commas" />
-          </div>
-          <div class="form-group">
-            <label>Expiry Date (Optional)</label>
-            <input v-model="tokenForm.expired_at" type="date" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showAddTokenModal = false" class="btn btn-secondary">Cancel</button>
-          <button @click="saveToken" class="btn btn-primary">
-            {{ editingToken ? 'Update' : 'Create' }}
-          </button>
+        <div class="form-group">
+          <label>Description (Optional) - Markdown supported</label>
+          <textarea v-model="groupForm.description"
+            placeholder="e.g., Production environment tokens (max 100 characters)" maxlength="100" rows="3"></textarea>
+          <div class="char-count">{{ groupForm.description.length }}/100</div>
         </div>
       </div>
+      <div class="modal-footer">
+        <button @click="showAddGroupModal = false" class="btn btn-secondary">Cancel</button>
+        <button @click="saveGroup" class="btn btn-primary">
+          {{ editingGroup ? 'Update' : 'Create' }}
+        </button>
+      </div>
     </div>
+  </div>
 
-    <!-- Toast Notification -->
-    <div v-if="toast" :class="['toast', toast.type]">
-      {{ toast.message }}
+  <!-- Add/Edit Token Modal -->
+  <div v-if="showAddTokenModal" class="modal-overlay" @click.self="showAddTokenModal = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>{{ editingToken ? 'Edit Token' : 'New Token' }}</h2>
+        <button @click="showAddTokenModal = false" class="close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Token Name</label>
+          <input v-model="tokenForm.name" type="text" placeholder="e.g., API Key" />
+        </div>
+        <div class="form-group">
+          <label>Token Value (Max 500 characters)</label>
+          <div class="token-value-wrapper">
+            <textarea v-model="tokenForm.value" :type="showTokenValue ? 'text' : 'password'"
+              placeholder="Your secret token value" maxlength="500" rows="3"></textarea>
+            <button type="button" @click="showTokenValue = !showTokenValue" class="toggle-visibility-btn"
+              :title="showTokenValue ? 'Hide token' : 'Show token'">
+              {{ showTokenValue ? '👁️' : '🙈' }}
+            </button>
+          </div>
+          <div class="char-count">{{ tokenForm.value.length }}/500</div>
+        </div>
+        <div class="form-group">
+          <label>Environment</label>
+          <input v-model="tokenForm.env_name" type="text" placeholder="e.g., PROD_API_KEY" required />
+        </div>
+        <div class="form-group">
+          <label>Website (Optional)</label>
+          <input v-model="tokenForm.website" type="url" placeholder="https://example.com" />
+        </div>
+        <div class="form-group">
+          <label>Description (Optional) - Markdown supported</label>
+          <textarea v-model="tokenForm.description" placeholder="Token description (max 100 characters)" maxlength="100"
+            rows="3"></textarea>
+          <div class="char-count">{{ tokenForm.description.length }}/100</div>
+        </div>
+        <div class="form-group">
+          <label>Tags (Optional)</label>
+          <input v-model="tokenForm.tagsInput" type="text" placeholder="Separate tags with commas" />
+        </div>
+        <div class="form-group">
+          <label>Expiry Date (Optional)</label>
+          <input v-model="tokenForm.expired_at" type="date" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button @click="showAddTokenModal = false" class="btn btn-secondary">Cancel</button>
+        <button @click="saveToken" class="btn btn-primary">
+          {{ editingToken ? 'Update' : 'Create' }}
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div v-if="toast" :class="['toast', toast.type]">
+    {{ toast.message }}
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
+import { VueDraggable } from 'vue-draggable-plus'
 import type { Group, Token } from '@/types/database'
 
 // Configure marked for simple rendering
@@ -234,6 +267,11 @@ const showAddTokenModal = ref(false)
 const showTokenValue = ref(false)
 const editingGroup = ref<Group | null>(null)
 const editingToken = ref<Token | null>(null)
+
+// Multi-select and drag state
+const selectedTokenIds = ref<Set<number>>(new Set())
+const showGroupSelectMenu = ref(false)
+const groupSelectMenuPosition = ref({ x: 0, y: 0 })
 
 const groupForm = ref({ name: '', description: '' })
 const tokenForm = ref({
@@ -333,7 +371,10 @@ const saveGroup = async () => {
       })
       showToast('Group updated successfully', 'success')
     } else {
-      await window.ipcRenderer.invoke('group:create', groupForm.value.name, groupForm.value.description)
+      await window.ipcRenderer.invoke('group:create', {
+        name: groupForm.value.name,
+        description: groupForm.value.description,
+      })
       showToast('Group created successfully', 'success')
     }
 
@@ -436,6 +477,59 @@ const copyToClipboard = async (text: string) => {
   }
 }
 
+// Multi-select and drag functions
+const toggleTokenSelection = (tokenId: number) => {
+  if (selectedTokenIds.value.has(tokenId)) {
+    selectedTokenIds.value.delete(tokenId)
+  } else {
+    selectedTokenIds.value.add(tokenId)
+  }
+}
+
+const handleTokenClick = (token: Token, event: MouseEvent) => {
+  if ((event.target as HTMLElement).closest('.token-checkbox')) {
+    return
+  }
+  if ((event.target as HTMLElement).closest('.token-actions')) {
+    return
+  }
+  selectToken(token)
+}
+
+const clearSelection = () => {
+  selectedTokenIds.value.clear()
+}
+
+const addSelectedToGroup = () => {
+  if (selectedTokenIds.value.size === 0) return
+  showGroupSelectMenu.value = true
+}
+
+const addTokensToGroup = async (groupId: number) => {
+  try {
+    const selectedIds = Array.from(selectedTokenIds.value)
+
+    for (const tokenId of selectedIds) {
+      // Check if token is already in this group
+      const token = tokens.value.find(t => t.id === tokenId)
+      if (token) {
+        const groupIds = (token as any).group_ids || []
+        if (!groupIds.includes(groupId)) {
+          await window.ipcRenderer.invoke('groupToken:add', groupId, tokenId)
+        }
+      }
+    }
+
+    showToast(`Added ${selectedIds.length} token(s) to group`, 'success')
+    selectedTokenIds.value.clear()
+    showGroupSelectMenu.value = false
+    await loadData()
+  } catch (error) {
+    showToast('Failed to add tokens to group', 'error')
+    console.error(error)
+  }
+}
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   return date.toLocaleDateString()
@@ -448,9 +542,22 @@ const showToast = (message: string, type: 'success' | 'error') => {
   }, 3000)
 }
 
+const dragOptions = {
+  animation: 200,
+  group: 'tokens',
+  disabled: false,
+  ghostClass: 'ghost',
+}
+
+const onTokenDragEnd = async () => {
+  // Token order changed, could save to backend if needed
+  console.log('Token order changed')
+}
+
 onMounted(() => {
   loadData()
 })
+
 </script>
 
 <style scoped>
@@ -615,6 +722,41 @@ onMounted(() => {
   gap: 16px;
 }
 
+.tokens-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f0f4ff;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.batch-actions span {
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.token-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.token-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
 .token-card {
   background: white;
   border: 1px solid #e0e0e0;
@@ -622,12 +764,30 @@ onMounted(() => {
   padding: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  gap: 12px;
+}
+
+.token-card.selected {
+  background: #f0f4ff;
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
 }
 
 .token-card:hover {
   border-color: #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
   transform: translateY(-2px);
+}
+
+.token-card.sortable-ghost {
+  opacity: 0.5;
+  background: #f5f5f5;
+}
+
+.token-card.sortable-drag {
+  opacity: 1;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .token-header {
@@ -929,6 +1089,27 @@ onMounted(() => {
 
 .btn-secondary:hover {
   background-color: #dee2e6;
+}
+
+/* Group Select Menu */
+.groups-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-select-item {
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.group-select-item:hover {
+  background: #f0f4ff;
+  border-color: #667eea;
 }
 
 /* Toast Notification */
