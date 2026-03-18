@@ -19,12 +19,17 @@
           <h2>Groups</h2>
         </div>
         <div class="groups-list">
-          <div :class="['group-item', { active: activeGroupId === UNGROUPED_ID }]" @click="selectGroup(UNGROUPED_ID)">
+          <div
+            :class="['group-item', { active: activeGroupId === UNGROUPED_ID, 'drag-over-group': dragOverGroupId === UNGROUPED_ID }]"
+            @click="selectGroup(UNGROUPED_ID)" @dragover.prevent="dragOverGroupId = UNGROUPED_ID"
+            @dragleave="dragOverGroupId = null" @drop="handleGroupDrop(UNGROUPED_ID)">
             <div class="group-name">未分组</div>
             <div class="group-count">{{ getGroupTokenCount(UNGROUPED_ID) }}</div>
           </div>
-          <div v-for="group in groups" :key="group.id" :class="['group-item', { active: activeGroupId === group.id }]"
-            @click="selectGroup(group.id)">
+          <div v-for="group in groups" :key="group.id"
+            :class="['group-item', { active: activeGroupId === group.id, 'drag-over-group': dragOverGroupId === group.id }]"
+            @click="selectGroup(group.id)" @dragover.prevent="dragOverGroupId = group.id"
+            @dragleave="dragOverGroupId = null" @drop="handleGroupDrop(group.id)">
             <div class="group-name">{{ group.name }}</div>
             <div class="group-count">{{ getGroupTokenCount(group.id) }}</div>
           </div>
@@ -58,10 +63,13 @@
                 Clear
               </button>
             </div>
-            <VueDraggable v-model="filteredTokens" class="tokens-grid" :options="dragOptions" @change="onTokenDragEnd">
+            <VueDraggable v-model="filteredTokens" class="tokens-grid" :options="dragOptions" @change="onTokenDragEnd"
+              @start="onTokenDragStart" @end="onTokenDragEnd">
               <div v-for="token in filteredTokens" :key="token.id"
                 :class="['token-card', { selected: selectedTokenIds.has(token.id) }]"
-                @click="handleTokenClick(token, $event)">
+                @click="handleTokenClick(token, $event)" draggable="true"
+                @dragstart="handleTokenDragStart($event, token)" @dragover.prevent="handleTokenDragOver"
+                @drop="handleTokenDrop($event, token)">
                 <div class="token-checkbox">
                   <input type="checkbox" :checked="selectedTokenIds.has(token.id)"
                     @click.stop="toggleTokenSelection(token.id)" />
@@ -271,7 +279,9 @@ const editingToken = ref<Token | null>(null)
 // Multi-select and drag state
 const selectedTokenIds = ref<Set<number>>(new Set())
 const showGroupSelectMenu = ref(false)
-const groupSelectMenuPosition = ref({ x: 0, y: 0 })
+const dragOverGroupId = ref<number | null>(null)
+const draggedToken = ref<Token | null>(null)
+const draggedFromGroupId = ref<number | null>(null)
 
 const groupForm = ref({ name: '', description: '' })
 const tokenForm = ref({
@@ -549,6 +559,118 @@ const dragOptions = {
   ghostClass: 'ghost',
 }
 
+const handleTokenDragStart = (event: DragEvent, token: Token) => {
+  draggedToken.value = token
+  draggedFromGroupId.value = activeGroupId.value
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('tokenId', token.id.toString())
+  }
+}
+
+const handleTokenDragOver = (event: DragEvent) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+const handleTokenDrop = async (event: DragEvent, targetToken: Token) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (!draggedToken.value) return
+
+  // 如果拖拽到同一个 token，不做任何操作
+  if (draggedToken.value.id === targetToken.id) {
+    draggedToken.value = null
+    draggedFromGroupId.value = null
+    return
+  }
+
+  // 获取拖拽的 token 在当前列表中的索引
+  const draggedIndex = filteredTokens.value.findIndex(t => t.id === draggedToken.value!.id)
+  const targetIndex = filteredTokens.value.findIndex(t => t.id === targetToken.id)
+
+  if (draggedIndex === -1 || targetIndex === -1) {
+    draggedToken.value = null
+    draggedFromGroupId.value = null
+    return
+  }
+
+  // 交换位置
+  const temp = filteredTokens.value[draggedIndex]
+  filteredTokens.value[draggedIndex] = filteredTokens.value[targetIndex]
+  filteredTokens.value[targetIndex] = temp
+
+  // 保存新的排序到后端
+  try {
+    const tokenIds = filteredTokens.value.map(t => t.id)
+    await window.ipcRenderer.invoke('order:reorderTokens', tokenIds)
+    showToast('Token order updated', 'success')
+  } catch (error) {
+    showToast('Failed to update token order', 'error')
+    console.error(error)
+  }
+
+  draggedToken.value = null
+  draggedFromGroupId.value = null
+}
+
+const handleGroupDrop = async (targetGroupId: number) => {
+  dragOverGroupId.value = null
+
+  if (!draggedToken.value) return
+
+  // 如果拖拽到同一个分组，不做任何操作
+  if (draggedFromGroupId.value === targetGroupId) {
+    draggedToken.value = null
+    draggedFromGroupId.value = null
+    return
+  }
+
+  try {
+    const tokenId = draggedToken.value.id
+    const token = tokens.value.find(t => t.id === tokenId)
+
+    if (!token) {
+      draggedToken.value = null
+      draggedFromGroupId.value = null
+      return
+    }
+
+    const groupIds = (token as any).group_ids || []
+
+    // 如果目标是未分组，则移除所有分组
+    if (targetGroupId === UNGROUPED_ID) {
+      // 从所有分组中移除该 token
+      for (const groupId of groupIds) {
+        await window.ipcRenderer.invoke('groupToken:remove', groupId, tokenId)
+      }
+      showToast('Token moved to ungrouped', 'success')
+    } else {
+      // 如果 token 还不在目标分组中，添加到目标分组
+      if (!groupIds.includes(targetGroupId)) {
+        await window.ipcRenderer.invoke('groupToken:add', targetGroupId, tokenId)
+        showToast('Token added to group', 'success')
+      } else {
+        showToast('Token already in this group', 'error')
+      }
+    }
+
+    await loadData()
+  } catch (error) {
+    showToast('Failed to move token to group', 'error')
+    console.error(error)
+  }
+
+  draggedToken.value = null
+  draggedFromGroupId.value = null
+}
+
+const onTokenDragStart = () => {
+  // VueDraggable 开始拖拽
+}
+
 const onTokenDragEnd = async () => {
   // Token order changed, could save to backend if needed
   console.log('Token order changed')
@@ -663,6 +785,12 @@ onMounted(() => {
 
 .group-item.active .group-count {
   background-color: rgba(255, 255, 255, 0.3);
+}
+
+.group-item.drag-over-group {
+  background-color: #f0f4ff;
+  border: 2px solid #667eea;
+  box-shadow: inset 0 0 0 1px #667eea;
 }
 
 .tokens-main {
@@ -788,6 +916,12 @@ onMounted(() => {
 .token-card.sortable-drag {
   opacity: 1;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.token-card.drag-over {
+  border-color: #667eea;
+  background-color: #f0f4ff;
+  box-shadow: inset 0 0 0 2px #667eea;
 }
 
 .token-header {
