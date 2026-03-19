@@ -17,6 +17,9 @@ export class GroupToken {
   @Column({ type: "integer" })
   group_id: number;
 
+  @Column({ type: "varchar", nullable: true })
+  group_uuid: string;
+
   @Column({ type: "integer" })
   token_id: number;
 

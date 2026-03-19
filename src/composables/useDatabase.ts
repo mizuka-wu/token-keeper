@@ -302,10 +302,29 @@ export function useDatabase() {
 
   // ============ Group Config Operations ============
 
+  async function getActiveGroupUuid() {
+    try {
+      const response = await (ipcClient.get as any)("/api/config/active-group");
+      return response.data.activeGroupUuid;
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    }
+  }
+
   async function getActiveGroupId() {
     try {
       const response = await (ipcClient.get as any)("/api/config/active-group");
       return response.data.activeGroupId;
+    } catch (e) {
+      error.value = (e as Error).message;
+      throw e;
+    }
+  }
+
+  async function setActiveGroupUuid(groupUuid: string | null) {
+    try {
+      await (ipcClient.put as any)("/api/config/active-group", { groupUuid });
     } catch (e) {
       error.value = (e as Error).message;
       throw e;
@@ -428,7 +447,9 @@ export function useDatabase() {
     getGroupTokens,
     getTokenGroups,
     // Group Config methods
+    getActiveGroupUuid,
     getActiveGroupId,
+    setActiveGroupUuid,
     setActiveGroupId,
     getGroupConfig,
     // Order/Drag methods

@@ -28,10 +28,10 @@ export function setupIPC() {
     }
   });
 
-  app.post("/api/groups", (req, res) => {
+  app.post("/api/groups", async (req, res) => {
     try {
       const validated = CreateGroupSchema.parse(req.body);
-      const group = db.createGroup(validated);
+      const group = await db.createGroup(validated);
       res.status(201).send(group);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
@@ -48,21 +48,31 @@ export function setupIPC() {
     }
   });
 
-  app.put("/api/groups/:id", (req, res) => {
+  app.get("/api/groups/uuid/:uuid", async (req, res) => {
+    try {
+      const uuid = req.params.uuid;
+      const group = await db.getGroupByUuid(uuid);
+      res.status(200).send(group);
+    } catch (error) {
+      res.status(500).send({ error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = UpdateGroupSchema.parse(req.body);
-      const group = db.updateGroup(id, validated);
+      const group = await db.updateGroup(id, validated);
       res.status(200).send(group);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.delete("/api/groups/:id", (req, res) => {
+  app.delete("/api/groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      db.deleteGroup(id);
+      await db.deleteGroup(id);
       res.status(204).send();
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -90,10 +100,10 @@ export function setupIPC() {
     }
   });
 
-  app.post("/api/tokens", (req, res) => {
+  app.post("/api/tokens", async (req, res) => {
     try {
       const validated = CreateTokenSchema.parse(req.body);
-      const token = db.createToken(validated);
+      const token = await db.createToken(validated);
       res.status(201).send(token);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
@@ -110,21 +120,21 @@ export function setupIPC() {
     }
   });
 
-  app.put("/api/tokens/:id", (req, res) => {
+  app.put("/api/tokens/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = UpdateTokenSchema.parse(req.body);
-      const token = db.updateToken(id, validated);
+      const token = await db.updateToken(id, validated);
       res.status(200).send(token);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.delete("/api/tokens/:id", (req, res) => {
+  app.delete("/api/tokens/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      db.deleteToken(id);
+      await db.deleteToken(id);
       res.status(204).send();
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -153,42 +163,42 @@ export function setupIPC() {
 
   // ============ Order Routes ============
 
-  app.put("/api/groups/:id/order", (req, res) => {
+  app.put("/api/groups/:id/order", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { orderIndex } = req.body;
-      const group = db.updateGroupOrder(id, orderIndex);
+      const group = await db.updateGroupOrder(id, orderIndex);
       res.status(200).send(group);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.put("/api/tokens/:id/order", (req, res) => {
+  app.put("/api/tokens/:id/order", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { orderIndex } = req.body;
-      const token = db.updateTokenOrder(id, orderIndex);
+      const token = await db.updateTokenOrder(id, orderIndex);
       res.status(200).send(token);
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.post("/api/groups/reorder", (req, res) => {
+  app.post("/api/groups/reorder", async (req, res) => {
     try {
       const { groupIds } = req.body;
-      db.reorderGroups(groupIds);
+      await db.reorderGroups(groupIds);
       res.status(200).send({ success: true });
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.post("/api/tokens/reorder", (req, res) => {
+  app.post("/api/tokens/reorder", async (req, res) => {
     try {
       const { tokenIds } = req.body;
-      db.reorderTokens(tokenIds);
+      await db.reorderTokens(tokenIds);
       res.status(200).send({ success: true });
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
@@ -197,22 +207,22 @@ export function setupIPC() {
 
   // ============ Group-Token Association Routes ============
 
-  app.post("/api/groups/:groupId/tokens/:tokenId", (req, res) => {
+  app.post("/api/groups/:groupId/tokens/:tokenId", async (req, res) => {
     try {
       const groupId = parseInt(req.params.groupId);
       const tokenId = parseInt(req.params.tokenId);
-      db.addTokenToGroup(groupId, tokenId);
+      await db.addTokenToGroup(groupId, tokenId);
       res.status(200).send({ success: true });
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });
     }
   });
 
-  app.delete("/api/groups/:groupId/tokens/:tokenId", (req, res) => {
+  app.delete("/api/groups/:groupId/tokens/:tokenId", async (req, res) => {
     try {
       const groupId = parseInt(req.params.groupId);
       const tokenId = parseInt(req.params.tokenId);
-      db.removeTokenFromGroup(groupId, tokenId);
+      await db.removeTokenFromGroup(groupId, tokenId);
       res.status(204).send();
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
@@ -243,8 +253,9 @@ export function setupIPC() {
 
   app.get("/api/config/active-group", (_req, res) => {
     try {
+      const activeGroupUuid = groupConfig.getActiveGroupUuid();
       const activeGroupId = groupConfig.getActiveGroupId();
-      res.status(200).send({ activeGroupId });
+      res.status(200).send({ activeGroupUuid, activeGroupId });
     } catch (error) {
       res.status(500).send({ error: (error as Error).message });
     }
@@ -252,8 +263,13 @@ export function setupIPC() {
 
   app.put("/api/config/active-group", (req, res) => {
     try {
-      const { groupId } = req.body;
-      groupConfig.setActiveGroupId(groupId);
+      const { groupUuid, groupId } = req.body;
+      if (groupUuid !== undefined) {
+        groupConfig.setActiveGroupUuid(groupUuid);
+      }
+      if (groupId !== undefined) {
+        groupConfig.setActiveGroupId(groupId);
+      }
       res.status(200).send({ success: true });
     } catch (error) {
       res.status(400).send({ error: (error as Error).message });

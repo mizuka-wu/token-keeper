@@ -14,6 +14,9 @@ export class Group {
   id: number;
 
   @Column({ type: "varchar", unique: true })
+  uuid: string;
+
+  @Column({ type: "varchar", unique: true })
   name: string;
 
   @Column({ type: "text", nullable: true })

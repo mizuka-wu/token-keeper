@@ -4,6 +4,7 @@ import { Token } from "./entities/Token";
 import { GroupToken } from "./entities/GroupToken";
 import type { Group as GroupType, Token as TokenType } from "../types/database";
 import { EncryptionService } from "../services/encryption";
+import { randomUUID } from "crypto";
 import type {
   CreateGroup,
   UpdateGroup,
@@ -18,6 +19,7 @@ export { initializeDatabase };
 export async function createGroup(payload: CreateGroup): Promise<GroupType> {
   const groupRepo = AppDataSource.getRepository(Group);
   const group = groupRepo.create({
+    uuid: randomUUID(),
     name: payload.name,
     description: payload.description || null,
   });
@@ -34,6 +36,11 @@ export async function getGroups(): Promise<GroupType[]> {
 export async function getGroup(id: number): Promise<GroupType | null> {
   const groupRepo = AppDataSource.getRepository(Group);
   return (await groupRepo.findOne({ where: { id } })) as any;
+}
+
+export async function getGroupByUuid(uuid: string): Promise<GroupType | null> {
+  const groupRepo = AppDataSource.getRepository(Group);
+  return (await groupRepo.findOne({ where: { uuid } })) as any;
 }
 
 export async function updateGroup(
@@ -55,6 +62,12 @@ export async function deleteGroup(id: number): Promise<void> {
   const group = await groupRepo.findOne({ where: { id } });
   if (group) {
     await groupRepo.delete(id);
+    // Clear active group config if the deleted group was active
+    const groupConfig = await import("../config/groupConfig");
+    const activeGroupId = groupConfig.getActiveGroupId();
+    if (activeGroupId === id) {
+      groupConfig.clearActiveGroup();
+    }
   }
 }
 
@@ -226,7 +239,12 @@ export async function addTokenToGroup(
   });
 
   if (!existing) {
-    const gt = gtRepo.create({ group_id: groupId, token_id: tokenId });
+    const group = await getGroup(groupId);
+    const gt = gtRepo.create({
+      group_id: groupId,
+      group_uuid: group?.uuid || null,
+      token_id: tokenId,
+    });
     await gtRepo.save(gt);
   }
 }

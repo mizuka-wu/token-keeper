@@ -1,5 +1,6 @@
 export interface Group {
   id: number;
+  uuid: string;
   name: string;
   description?: string;
   order_index: number;
